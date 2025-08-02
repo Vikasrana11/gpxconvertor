@@ -3,19 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GPX To KML Converter with Multi-File Support</title>
+  <title>Advanced GPX/KML/KMZ Converter</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RHMM7ZENY"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-0RHMM7ZENY');
-</script>
-
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/css/OrbitControls.css" />
+  
   <style>
     body {
       margin: 0;
@@ -39,9 +31,9 @@
       height: 500px;
       margin-top: 1rem;
     }
-    #map {
-      width: 110%;
-      height: 130%;
+    #map, #globe-container {
+      width: 100%;
+      height: 100%;
     }
     .ol-popup {
       background: white;
@@ -116,25 +108,93 @@
       align-items: center;
       font-size: 0.9rem;
     }
-    #layer-switch label {
-      margin: 0 8px;
+    #time-slider-container {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+    #time-slider {
+      width: 100%;
+    }
+    #time-display {
+      text-align: center;
+      margin-top: 5px;
+      font-weight: bold;
+    }
+    .tool-button {
+      position: absolute;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
       cursor: pointer;
-      font-weight: 500;
     }
-    #layer-switch input:checked + .osm-label {
-      font-weight: bold;
-      color: #007bff;
+    #measure-tool {
+      top: 50px;
+      left: 10px;
     }
-    #layer-switch input:not(:checked) + .osm-label + .google-label {
-      font-weight: bold;
-      color: #007bff;
+    #view-switch {
+      top: 90px;
+      left: 10px;
+    }
+    #measure-result {
+      position: absolute;
+      top: 130px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      display: none;
+    }
+    .nav-tabs {
+      margin-bottom: 15px;
+    }
+    #globe-container {
+      display: none;
+    }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+      z-index: 100;
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 5px;
+      color: white;
+      z-index: 100;
+    }
+    #coordinates {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 5px;
+      color: white;
+      z-index: 100;
     }
     @media (max-width: 768px) {
-      #legend, #layer-switch {
+      #legend, #layer-switch, .tool-button {
         position: static;
         max-width: 100%;
         margin: 10px auto;
         text-align: center;
+      }
+      #measure-result {
+        position: static;
+        margin: 10px auto;
       }
     }
   </style>
@@ -143,59 +203,105 @@
 <body>
   <div class="topnavbar">
     <button class="btn btn-dark me-3" id="toggleSidebar" aria-label="Toggle sidebar visibility">☰</button>
-    <h1>GPX To KML Converter</h1>
+    <h1>Advanced GPX/KML/KMZ Converter</h1>
   </div>
 
   <main class="container mt-3">
-    <input class="form-control mb-3" type="file" id="gpxfile" accept=".gpx" multiple />
+    <input class="form-control mb-3" type="file" id="inputfile" accept=".gpx,.kml,.kmz" multiple />
     <div class="download-buttons">
       <button class="btn btn-primary me-2" id="downloadKml" disabled>Download KML</button>
       <button class="btn btn-secondary me-2" id="downloadBatchKml" disabled>Download Batch KML</button>
       <button class="btn btn-danger" id="resetButton">Reset</button>
     </div>
-    <div id="summary"><strong>GPX Summary:</strong> Load one or more .gpx files to see details.</div>
-    <div class="map-container">
-      <div id="map"></div>
-      <div id="layer-switch">
-        <label class="google-label" for="layer-toggle">Google Satellite</label>
-        <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="layer-toggle" checked>
-          <label class="form-check-label osm-label" for="layer-toggle">OSM</label>
+    <div id="summary"><strong>File Summary:</strong> Load one or more .gpx, .kml, or .kmz files to see details.</div>
+    
+    <ul class="nav nav-tabs" id="viewTabs">
+      <li class="nav-item">
+        <a class="nav-link active" href="#" data-view="2d">2D Map</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" data-view="3d">3D View</a>
+      </li>
+    </ul>
+    
+    <div id="2d-view">
+      <div class="map-container">
+        <div id="map"></div>
+        <div id="layer-switch">
+          <label class="google-label" for="layer-toggle">Google Satellite</label>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="layer-toggle" checked>
+            <label class="form-check-label osm-label" for="layer-toggle">OSM</label>
+          </div>
         </div>
+        <div id="legend">
+          <h4>Legend</h4>
+          <div class="legend-item">
+            <svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="green" stroke="white" stroke-width="1"/></svg>
+            <span>Start Point</span>
+          </div>
+          <div class="legend-item">
+            <svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="red" stroke="white" stroke-width="1"/></svg>
+            <span>End Point</span>
+          </div>
+          <div class="legend-item">
+            <svg width="18" height="18"><circle cx="8" cy="8" r="6" fill="yellow" stroke="white" stroke-width="2"/></svg>
+            <span>Stop Point (Speed = 0 km/h)</span>
+          </div>
+          <div class="legend-item">
+            <svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="blue" stroke="white" stroke-width="1"/></svg>
+            <span>Track Point</span>
+          </div>
+          <div class="legend-item">
+            <img src="https://cdn-icons-png.flaticon.com/512/252/252025.png" width="12" height="12" style="object-fit: contain;" />
+            <span>Waypoint</span>
+          </div>
+          <div class="legend-item">
+            <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="red" stroke-width="3"/></svg>
+            <span>Track</span>
+          </div>
+        </div>
+        <div id="measure-tool" class="tool-button" title="Measure Distance">
+          <i class="bi bi-rulers"></i> Measure
+        </div>
+        <div id="measure-result"></div>
       </div>
-      <div id="legend">
-        <h4>Legend</h4>
-        <div class="legend-item">
-          <svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="green" stroke="white" stroke-width="1"/></svg>
-          <span>Start Point</span>
-        </div>
-        <div class="legend-item">
-          <svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="red" stroke="white" stroke-width="1"/></svg>
-          <span>End Point</span>
-        </div>
-        <div class="legend-item">
-          <svg width="18" height="18"><circle cx="8" cy="8" r="6" fill="yellow" stroke="white" stroke-width="2"/></svg>
-          <span>Stop Point (Speed = 0 km/h)</span>
-        </div>
-        <div class="legend-item">
-          <svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="blue" stroke="white" stroke-width="1"/></svg>
-          <span>Track Point</span>
-        </div>
-        <div class="legend-item">
-          <img src="https://cdn-icons-png.flaticon.com/512/252/252025.png" width="12" height="12" style="object-fit: contain;" />
-          <span>Waypoint</span>
-        </div>
-        <div class="legend-item">
-          <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="red" stroke-width="3"/></svg>
-          <span>Track</span>
+      
+      <div id="time-slider-container" style="display: none;">
+        <input type="range" min="0" max="100" value="0" class="slider" id="time-slider">
+        <div id="time-display">00:00:00</div>
+        <div class="d-flex justify-content-center mt-2">
+          <button id="play-button" class="btn btn-sm btn-success me-2">Play</button>
+          <button id="pause-button" class="btn btn-sm btn-warning">Pause</button>
         </div>
       </div>
     </div>
+    
+    <div id="3d-view" style="display: none;">
+      <div class="map-container">
+        <div id="globe-container">
+          <div id="loading">Loading 3D Globe...</div>
+          <div id="coordinates">Latitude: 0°<br>Longitude: 0°</div>
+          <div id="controls">
+            <button id="rotate-toggle">Enable Rotation</button>
+            <div>Left-click + drag: Rotate</div>
+            <div>Right-click + drag: Pan</div>
+            <div>Scroll: Zoom</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <pre id="output" style="white-space: pre-wrap; margin-top: 1rem;"></pre>
   </main>
 
+  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/ol@7.5.2/dist/ol.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -204,9 +310,21 @@
       let vectorLayer;
       let allFeatures = [];
       let osmLayer, googleSatelliteLayer;
+      let scene, camera, renderer, controls, earth;
+      let autoRotate = false;
+      let measureToolActive = false;
+      let measureTool;
+      let animationInterval;
+      let currentTrackPoints = [];
+      let animationPosition = 0;
+      let animationFeatures = [];
+      
+      // Initialize all components
+      initMap();
+      initGlobe();
+      setupEventListeners();
 
       function initMap() {
-        // Define base layers
         osmLayer = new ol.layer.Tile({
           source: new ol.source.OSM(),
           visible: false
@@ -214,7 +332,6 @@
         googleSatelliteLayer = new ol.layer.Tile({
           source: new ol.source.XYZ({
             url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-            
           }),
           visible: true
         });
@@ -238,14 +355,12 @@
           })
         });
 
-        // Layer toggle switch
         document.getElementById("layer-toggle").addEventListener("change", function (e) {
           const isOSM = e.target.checked;
           osmLayer.setVisible(isOSM);
           googleSatelliteLayer.setVisible(!isOSM);
         });
 
-        // Popup setup
         const popupContainer = document.createElement("div");
         popupContainer.className = "ol-popup";
         const popupContent = document.createElement("div");
@@ -281,9 +396,9 @@
               } else if (props.type === "trackpoint" || props.type === "start" || props.type === "end") {
                 infoHtml = `<strong>Track Point</strong><br/>
                 Lat: ${props.lat}<br/>Lon: ${props.lon}<br/>
-                Elevation: ${props.elevation} m<br/>
-                Time (IST): ${props.istTime}<br/>
-                Speed: ${props.speed.toFixed(2)} km/h`;
+                Elevation: ${props.elevation || "N/A"} m<br/>
+                Time (IST): ${props.istTime || "N/A"}<br/>
+                Speed: ${props.speed !== undefined ? props.speed.toFixed(2) : "N/A"} km/h`;
               } else {
                 infoHtml = `<strong>Point</strong><br/>Lat: ${props.lat}<br/>Lon: ${props.lon}`;
               }
@@ -294,18 +409,578 @@
           });
           if (!found) overlay.setPosition(undefined);
         });
+
+        measureTool = new ol.interaction.Draw({
+          source: vectorSource,
+          type: 'LineString',
+          style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+              color: 'rgba(0, 0, 255, 0.7)',
+              width: 2
+            })
+          })
+        });
+        measureTool.setActive(false);
+        map.addInteraction(measureTool);
+
+        measureTool.on('drawend', function(evt) {
+          const line = evt.feature.getGeometry();
+          const coordinates = line.getCoordinates();
+          let totalDistance = 0;
+          
+          for (let i = 1; i < coordinates.length; i++) {
+            const from = ol.proj.toLonLat(coordinates[i-1]);
+            const to = ol.proj.toLonLat(coordinates[i]);
+            totalDistance += haversine(from[1], from[0], to[1], to[0]);
+          }
+          
+          document.getElementById('measure-result').innerHTML = `Distance: ${(totalDistance/1000).toFixed(2)} km`;
+          document.getElementById('measure-result').style.display = 'block';
+          
+          setTimeout(() => {
+            vectorSource.removeFeature(evt.feature);
+            document.getElementById('measure-result').style.display = 'none';
+          }, 5000);
+        });
+      }
+
+      function initGlobe() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('globe-container').appendChild(renderer.domElement);
+        
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+        controls.autoRotate = false;
+        
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        const rotateButton = document.getElementById('rotate-toggle');
+        rotateButton.addEventListener('click', () => {
+          autoRotate = !autoRotate;
+          controls.autoRotate = autoRotate;
+          rotateButton.textContent = autoRotate ? 'Disable Rotation' : 'Enable Rotation';
+        });
+        
+        const loadingElement = document.getElementById('loading');
+        const coordsElement = document.getElementById('coordinates');
+        
+        createEarth();
+        
+        function createEarth() {
+          const geometry = new THREE.SphereGeometry(5, 64, 64);
+          const textureLoader = new THREE.TextureLoader();
+          
+          textureLoader.load(
+            'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',
+            (texture) => {
+              const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                roughness: 1,
+                metalness: 0
+              });
+              earth = new THREE.Mesh(geometry, material);
+              scene.add(earth);
+              loadingElement.style.display = 'none';
+              
+              centerOnIndia();
+            },
+            undefined,
+            (error) => {
+              console.error('Error loading texture:', error);
+              const material = new THREE.MeshStandardMaterial({
+                color: 0x1a3d6d,
+                roughness: 0.8,
+                metalness: 0.2
+              });
+              earth = new THREE.Mesh(geometry, material);
+              scene.add(earth);
+              loadingElement.style.display = 'none';
+              
+              centerOnIndia();
+            }
+          );
+        }
+        
+        function centerOnIndia() {
+          const indiaLat = 20.6;
+          const indiaLon = 78.9;
+          
+          const phi = (90 - indiaLat) * (Math.PI / 180);
+          const theta = (indiaLon + 180) * (Math.PI / 180);
+          
+          camera.position.x = 10 * Math.sin(phi) * Math.cos(theta);
+          camera.position.y = 10 * Math.cos(phi);
+          camera.position.z = 10 * Math.sin(phi) * Math.sin(theta);
+          
+          camera.lookAt(0, 0, 0);
+          controls.update();
+          
+          updateCoordinates();
+        }
+        
+        function updateCoordinates() {
+          const direction = new THREE.Vector3();
+          camera.getWorldDirection(direction);
+          direction.multiplyScalar(-1);
+          
+          const lon = Math.atan2(direction.z, direction.x) * (180 / Math.PI);
+          const lat = Math.asin(direction.y) * (180 / Math.PI);
+          
+          coordsElement.innerHTML = `Latitude: ${lat.toFixed(2)}°<br>Longitude: ${lon.toFixed(2)}°`;
+        }
+        
+        window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        function animate() {
+          requestAnimationFrame(animate);
+          controls.update();
+          updateCoordinates();
+          renderer.render(scene, camera);
+        }
+        
+        animate();
+      }
+
+      function setupEventListeners() {
+        document.getElementById("inputfile").addEventListener("change", function (event) {
+          const files = event.target.files;
+          if (!files.length) return;
+
+          for (const file of files) {
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+              try {
+                let data;
+                const fileName = file.name.toLowerCase();
+                if (fileName.endsWith('.gpx')) {
+                  data = parseGPX(e.target.result, file.name);
+                } else if (fileName.endsWith('.kml')) {
+                  data = parseKML(e.target.result, file.name);
+                } else if (fileName.endsWith('.kmz')) {
+                  const zip = await JSZip.loadAsync(file);
+                  const kmlFile = Object.keys(zip.files).find(name => name.endsWith('.kml'));
+                  if (!kmlFile) throw new Error('No KML file found in KMZ');
+                  const kmlContent = await zip.file(kmlFile).async('string');
+                  data = parseKML(kmlContent, file.name);
+                } else {
+                  throw new Error('Unsupported file type');
+                }
+                allFeatures.push(data);
+                vectorSource.addFeatures(data.features);
+                updateGlobeView(data.features);
+                updateSummary();
+                if (data.features.some(f => f.get('type') === 'trackpoint')) {
+                  setupTimeSlider(data);
+                }
+                
+                const extent = vectorSource.getExtent();
+                if (!ol.extent.isEmpty(extent)) {
+                  map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
+                  flyToExtent(extent);
+                }
+
+                document.getElementById("downloadKml").onclick = () => {
+                  const kml = generateKML(data);
+                  const kmlFileName = data.name.replace(/\.gpx|\.kml|\.kmz$/i, ".kml");
+                  downloadKML(kml, kmlFileName);
+                };
+
+                document.getElementById("downloadBatchKml").onclick = async () => {
+                  const batchKml = allFeatures.map((data, index) => generateKML({ ...data, name: data.name || `File_${index + 1}` })).join("\n");
+                  const batchKmlWrapper = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+${batchKml.replace(/<\?xml[^>]*>\n<kml[^>]*>\n\s*<Document>\n|\n\s*<\/Document>\n\s*<\/kml>/g, "")}
+  </Document>
+</kml>`;
+                  await downloadKML(batchKmlWrapper, "batch_files.kml");
+                };
+              } catch (err) {
+                alert(`Error parsing file "${file.name}": ${err.message}`);
+              }
+            };
+            reader.onerror = function () {
+              alert(`Error reading file "${file.name}"`);
+            };
+            if (file.name.toLowerCase().endsWith('.kmz')) {
+              reader.readAsArrayBuffer(file);
+            } else {
+              reader.readAsText(file);
+            }
+          }
+        });
+
+        document.getElementById("resetButton").addEventListener("click", function () {
+          resetMap();
+        });
+
+        document.getElementById("measure-tool").addEventListener("click", function() {
+          measureToolActive = !measureToolActive;
+          measureTool.setActive(measureToolActive);
+          this.style.backgroundColor = measureToolActive ? '#d4edda' : '';
+        });
+
+        document.querySelectorAll('[data-view]').forEach(tab => {
+          tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            const view = this.getAttribute('data-view');
+            
+            document.getElementById('2d-view').style.display = 'none';
+            document.getElementById('3d-view').style.display = 'none';
+            
+            document.getElementById(`${view}-view`).style.display = 'block';
+            
+            document.querySelectorAll('[data-view]').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            if (view === '3d' && renderer) {
+              setTimeout(() => {
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+              }, 100);
+            }
+          });
+        });
+
+        document.getElementById('play-button').addEventListener('click', startAnimation);
+        document.getElementById('pause-button').addEventListener('click', pauseAnimation);
+        document.getElementById('time-slider').addEventListener('input', function() {
+          if (animationInterval) pauseAnimation();
+          updateAnimationPosition(this.value);
+        });
+      }
+
+      function parseKML(xmlString, filename) {
+        try {
+          const parser = new DOMParser();
+          const kml = parser.parseFromString(xmlString, "application/xml");
+          if (kml.documentElement.nodeName === "parsererror") {
+            throw new Error("Invalid XML format");
+          }
+
+          const features = [];
+          const lineCoords = [];
+          let totalDistance = 0;
+          const placemarks = kml.getElementsByTagName("Placemark");
+          let startTime = null;
+          let endTime = null;
+          const speeds = [];
+          const elevations = [];
+
+          for (const placemark of placemarks) {
+            const point = placemark.getElementsByTagName("Point")[0];
+            const lineString = placemark.getElementsByTagName("LineString")[0];
+            const extendedData = placemark.getElementsByTagName("ExtendedData")[0];
+            let props = {};
+
+            if (extendedData) {
+              for (const data of extendedData.getElementsByTagName("Data")) {
+                const name = data.getAttribute("name");
+                const value = data.getElementsByTagName("value")[0]?.textContent;
+                if (name && value) props[name] = value;
+              }
+            }
+
+            const name = placemark.getElementsByTagName("name")[0]?.textContent || null;
+
+            if (point) {
+              const coordinates = point.getElementsByTagName("coordinates")[0]?.textContent.trim().split(",");
+              if (coordinates.length < 2) continue;
+              const lon = parseFloat(coordinates[0]);
+              const lat = parseFloat(coordinates[1]);
+              const elevation = coordinates[2] ? parseFloat(coordinates[2]) : 0;
+
+              if (isNaN(lat) || isNaN(lon)) continue;
+
+              features.push(
+                new ol.Feature({
+                  geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
+                  lat,
+                  lon,
+                  elevation,
+                  name,
+                  type: props.type || "waypoint",
+                  time: props.time || null,
+                  istTime: props.time ? convertToIST(props.time) : "N/A",
+                  speed: props.speed ? parseFloat(props.speed) : undefined
+                })
+              );
+
+              if (props.type === "trackpoint" && props.time) {
+                if (!startTime) startTime = props.time;
+                endTime = props.time;
+                if (props.speed !== undefined) speeds.push(parseFloat(props.speed));
+                if (elevation !== undefined) elevations.push(elevation);
+              }
+            } else if (lineString) {
+              const coordinates = lineString.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
+              const coords = coordinates.map(coord => {
+                const [lon, lat, ele] = coord.split(",").map(parseFloat);
+                if (isNaN(lon) || isNaN(lat)) return null;
+                lineCoords.push([lon, lat]);
+                return ol.proj.fromLonLat([lon, lat]);
+              }).filter(coord => coord !== null);
+
+              if (coords.length > 1) {
+                for (let i = 1; i < coords.length; i++) {
+                  const from = ol.proj.toLonLat(coords[i-1]);
+                  const to = ol.proj.toLonLat(coords[i]);
+                  totalDistance += haversine(from[1], from[0], to[1], to[0]);
+                }
+
+                features.push(
+                  new ol.Feature({
+                    geometry: new ol.geom.LineString(coords),
+                    type: "track"
+                  })
+                );
+              }
+            }
+          }
+
+          if (lineCoords.length > 0) {
+            const firstPoint = features.find(f => f.get("type") === "trackpoint");
+            const lastPoint = features.filter(f => f.get("type") === "trackpoint").slice(-1)[0];
+            if (firstPoint) firstPoint.set("type", "start");
+            if (lastPoint) lastPoint.set("type", "end");
+
+            for (let i = 0; i < speeds.length; i++) {
+              if (speeds[i] === 0) {
+                const point = features[i];
+                if (point && point.get("type") === "trackpoint") {
+                  point.set("type", "stop");
+                }
+              }
+            }
+          }
+
+          return { features, totalDistance, elevations, startTime, endTime, speeds, name: filename };
+        } catch (err) {
+          throw new Error(`Failed to parse KML/KMZ: ${err.message}`);
+        }
+      }
+
+      function updateGlobeView(features) {
+        if (!earth) return;
+        
+        scene.children = scene.children.filter(child => child === earth || child.type === "Light");
+        
+        const trackPoints = features.filter(f => f.get('type') === 'trackpoint' || 
+                                              f.get('type') === 'start' || 
+                                              f.get('type') === 'end');
+        
+        if (trackPoints.length > 0) {
+          const lineGeometry = new THREE.BufferGeometry();
+          const positions = [];
+          
+          trackPoints.forEach(f => {
+            const coord = f.getGeometry().getCoordinates();
+            const lonLat = ol.proj.toLonLat(coord);
+            const lat = lonLat[1];
+            const lon = lonLat[0];
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+            const radius = 5.01;
+            positions.push(
+              radius * Math.sin(phi) * Math.cos(theta),
+              radius * Math.cos(phi),
+              radius * Math.sin(phi) * Math.sin(theta)
+            );
+          });
+          
+          lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+          const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 3 });
+          const line = new THREE.Line(lineGeometry, lineMaterial);
+          scene.add(line);
+          
+          const start = trackPoints[0];
+          const startCoord = start.getGeometry().getCoordinates();
+          const startLonLat = ol.proj.toLonLat(startCoord);
+          const startPhi = (90 - startLonLat[1]) * (Math.PI / 180);
+          const startTheta = (startLonLat[0] + 180) * (Math.PI / 180);
+          const startGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+          const startMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+          const startPoint = new THREE.Mesh(startGeometry, startMaterial);
+          startPoint.position.set(
+            5.01 * Math.sin(startPhi) * Math.cos(startTheta),
+            5.01 * Math.cos(startPhi),
+            5.01 * Math.sin(startPhi) * Math.sin(startTheta)
+          );
+          scene.add(startPoint);
+          
+          const end = trackPoints[trackPoints.length - 1];
+          const endCoord = end.getGeometry().getCoordinates();
+          const endLonLat = ol.proj.toLonLat(endCoord);
+          const endPhi = (90 - endLonLat[1]) * (Math.PI / 180);
+          const endTheta = (endLonLat[0] + 180) * (Math.PI / 180);
+          const endGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+          const endMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+          const endPoint = new THREE.Mesh(endGeometry, endMaterial);
+          endPoint.position.set(
+            5.01 * Math.sin(endPhi) * Math.cos(endTheta),
+            5.01 * Math.cos(endPhi),
+            5.01 * Math.sin(endPhi) * Math.sin(endTheta)
+          );
+          scene.add(endPoint);
+          
+          const waypoints = features.filter(f => f.get('type') === 'waypoint');
+          waypoints.forEach(wpt => {
+            const coord = wpt.getGeometry().getCoordinates();
+            const lonLat = ol.proj.toLonLat(coord);
+            const phi = (90 - lonLat[1]) * (Math.PI / 180);
+            const theta = (lonLat[0] + 180) * (Math.PI / 180);
+            const waypointGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+            const waypointMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const waypoint = new THREE.Mesh(waypointGeometry, waypointMaterial);
+            waypoint.position.set(
+              5.01 * Math.sin(phi) * Math.cos(theta),
+              5.01 * Math.cos(phi),
+              5.01 * Math.sin(phi) * Math.sin(theta)
+            );
+            scene.add(waypoint);
+          });
+          
+          flyToExtent(vectorSource.getExtent());
+        }
+      }
+
+      function flyToExtent(extent) {
+        if (!extent || ol.extent.isEmpty(extent)) return;
+        
+        const min = ol.proj.toLonLat([extent[0], extent[1]]);
+        const max = ol.proj.toLonLat([extent[2], extent[3]]);
+        
+        const centerLon = (min[0] + max[0]) / 2;
+        const centerLat = (min[1] + max[1]) / 2;
+        
+        const phi = (90 - centerLat) * (Math.PI / 180);
+        const theta = (centerLon + 180) * (Math.PI / 180);
+        
+        camera.position.x = 10 * Math.sin(phi) * Math.cos(theta);
+        camera.position.y = 10 * Math.cos(phi);
+        camera.position.z = 10 * Math.sin(phi) * Math.sin(theta);
+        
+        camera.lookAt(0, 0, 0);
+        controls.update();
+      }
+
+      function setupTimeSlider(data) {
+        const trackPoints = data.features.filter(f => 
+          f.get('type') === 'trackpoint' || f.get('type') === 'start' || f.get('type') === 'end'
+        );
+        
+        if (trackPoints.length === 0) return;
+        
+        currentTrackPoints = trackPoints;
+        document.getElementById('time-slider-container').style.display = 'block';
+        
+        animationFeatures = [];
+        trackPoints.forEach((pt, i) => {
+          const feature = new ol.Feature({
+            geometry: pt.getGeometry(),
+            index: i,
+            time: pt.get('time'),
+            istTime: pt.get('istTime')
+          });
+          
+          const style = new ol.style.Style({
+            image: new ol.style.Circle({
+              radius: 8,
+              fill: new ol.style.Fill({ color: 'rgba(255, 0, 0, 0.8)' }),
+              stroke: new ol.style.Stroke({ color: 'white', width: 2 })
+            })
+          });
+          
+          feature.setStyle(style);
+          animationFeatures.push(feature);
+        });
+      }
+
+      function startAnimation() {
+        if (animationInterval) clearInterval(animationInterval);
+        
+        const slider = document.getElementById('time-slider');
+        const totalPoints = currentTrackPoints.length;
+        const duration = 30000;
+        const interval = duration / totalPoints;
+        let currentIndex = parseInt(slider.value);
+        
+        animationInterval = setInterval(() => {
+          currentIndex++;
+          if (currentIndex >= totalPoints) {
+            currentIndex = 0;
+          }
+          
+          slider.value = currentIndex;
+          updateAnimationPosition(currentIndex);
+        }, interval);
+      }
+
+      function pauseAnimation() {
+        if (animationInterval) {
+          clearInterval(animationInterval);
+          animationInterval = null;
+        }
+      }
+
+      function updateAnimationPosition(position) {
+        const index = parseInt(position);
+        if (index < 0 || index >= currentTrackPoints.length) return;
+        
+        const point = currentTrackPoints[index];
+        const timeDisplay = document.getElementById('time-display');
+        timeDisplay.textContent = point.get('istTime') || 'N/A';
+        
+        vectorSource.clear();
+        vectorSource.addFeatures(animationFeatures.slice(0, index + 1));
+        
+        const view = map.getView();
+        view.setCenter(point.getGeometry().getCoordinates());
       }
 
       function resetMap() {
         allFeatures = [];
         vectorSource.clear();
-        document.getElementById("summary").innerHTML = "<strong>GPX Summary:</strong> Load one or more .gpx files to see details.";
+        document.getElementById("summary").innerHTML = "<strong>File Summary:</strong> Load one or more .gpx, .kml, or .kmz files to see details.";
         document.getElementById("downloadKml").disabled = true;
         document.getElementById("downloadBatchKml").disabled = true;
-        document.getElementById("gpxfile").value = "";
+        document.getElementById("inputfile").value = "";
         document.getElementById("legend").style.display = "none";
+        document.getElementById("time-slider-container").style.display = "none";
         map.getView().setCenter(ol.proj.fromLonLat([80.3, 19.8]));
-        map.getView().setZoom(10);
+        map.getView().setZoom(4);
+        
+        if (earth) {
+          scene.children = scene.children.filter(child => child === earth || child.type === "Light");
+          centerOnIndia();
+        }
+        
+        if (animationInterval) {
+          clearInterval(animationInterval);
+          animationInterval = null;
+        }
+        currentTrackPoints = [];
+        animationFeatures = [];
       }
 
       function haversine(lat1, lon1, lat2, lon2) {
@@ -330,7 +1005,10 @@
             hour12: false,
             year: "numeric",
             month: "short",
-            day: "2-digit"
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
           }).format(date).replace(",", "");
         } catch {
           return "N/A";
@@ -398,7 +1076,7 @@
         let kmlOutput = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>${name || "GPX Data"}</name>
+    <name>${name || "File Data"}</name>
     <Style id="trackStyle">
       <LineStyle>
         <color>ff0000ff</color>
@@ -667,13 +1345,13 @@
             if (t === "trackpoint" || t === "start" || t === "end") trackCount++;
             else if (t === "waypoint") waypointCount++;
             else if (t === "stop") stopCount++;
-            if (f.get("elevation") !== undefined) {
+            if (f.get("elevation") !== undefined && !isNaN(f.get("elevation"))) {
               minElevation = Math.min(minElevation, f.get("elevation"));
               maxElevation = Math.max(maxElevation, f.get("elevation"));
             }
-            if (f.get("speed") !== undefined) speeds.push(f.get("speed"));
+            if (f.get("speed") !== undefined && !isNaN(f.get("speed"))) speeds.push(f.get("speed"));
           }
-          totalDistance += fileData.totalDistance;
+          totalDistance += fileData.totalDistance || 0;
           if (fileData.startTime) startTime = fileData.startTime;
           if (fileData.endTime) endTime = fileData.endTime;
           if (fileData.features.some(f => f.get("type") === "track")) trackFiles++;
@@ -684,7 +1362,7 @@
         const avgSpeed = speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
 
         const summaryHTML = `
-          <strong>GPX Summary:</strong><br/>
+          <strong>File Summary:</strong><br/>
           Tracks: ${trackFiles}<br/>
           Waypoints: ${waypointCount}<br/>
           Track Points: ${trackCount}<br/>
@@ -703,57 +1381,6 @@
         document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
         document.getElementById("legend").style.display = allFeatures.length > 0 ? "block" : "none";
       }
-
-      document.getElementById("gpxfile").addEventListener("change", function (event) {
-        const files = event.target.files;
-        if (!files.length) return;
-
-        for (const file of files) {
-          const reader = new FileReader();
-          reader.onload = function (e) {
-            try {
-              const data = parseGPX(e.target.result, file.name);
-              allFeatures.push(data);
-              vectorSource.addFeatures(data.features);
-              updateSummary();
-              const extent = vectorSource.getExtent();
-              if (!ol.extent.isEmpty(extent)) {
-                map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
-              }
-
-              document.getElementById("downloadKml").onclick = () => {
-                const kml = generateKML(data);
-                const kmlFileName = data.name.replace(/\.gpx$/i, ".kml");
-                downloadKML(kml, kmlFileName);
-              };
-
-              document.getElementById("downloadBatchKml").onclick = async () => {
-                const batchKml = allFeatures.map((data, index) => generateKML({ ...data, name: data.name || `GPX_${index + 1}` })).join("\n");
-                const batchKmlWrapper = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-${batchKml.replace(/<\?xml[^>]*>\n<kml[^>]*>\n\s*<Document>\n|\n\s*<\/Document>\n\s*<\/kml>/g, "")}
-  </Document>
-</kml>`;
-                await downloadKML(batchKmlWrapper, "batch_gpx_files.kml");
-              };
-            } catch (err) {
-              alert(`Error parsing GPX file "${file.name}": ${err.message}`);
-            }
-          };
-          reader.onerror = function () {
-            alert(`Error reading file "${file.name}"`);
-          };
-          reader.readAsText(file);
-        }
-      });
-
-      document.getElementById("resetButton").addEventListener("click", function () {
-        resetMap();
-      });
-
-      // Initialize map on page load
-      initMap();
     });
   </script>
 </body>
