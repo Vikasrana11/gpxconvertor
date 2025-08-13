@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Advanced GPX/KML/KMZ Converter - Fully Interactive Editor</title>
-
+  <!-- Pointer Event Polyfill for older mobile browsers -->
+  <script src="https://cdn.jsdelivr.net/npm/pepjs@0.5.3/dist/pep.min.js"></script>
   <!-- Bootstrap CSS for UI -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -62,34 +63,57 @@
       width: 100%;
       height: 100%;
     }
-    /* Popup style */
-    .ol-popup {
-      background: white;
+    /* Tooltip style */
+    .ol-tooltip {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.95);
       padding: 8px 12px;
       border-radius: 6px;
       border: 1px solid #ccc;
       min-width: 180px;
-      box-shadow: 0 1px 8px rgba(0,0,0,0.25);
-      position: relative;
-      bottom: 15px;
-      left: -50%;
-      transform: translateX(50%);
-      user-select: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       font-size: 0.9rem;
+      pointer-events: none;
       z-index: 10000;
+      transform: translate(-50%, -100%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      max-width: 300px;
     }
-    .close-button {
+    .ol-tooltip.visible {
+      opacity: 1;
+    }
+    .ol-tooltip:after {
+      content: "";
       position: absolute;
-      top: 2px;
-      right: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      color: #888;
-      font-size: 1.2rem;
-      line-height: 1;
+      bottom: -6px;
+      left: 50%;
+      margin-left: -6px;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid rgba(255, 255, 255, 0.95);
     }
-    .close-button:hover {
-      color: #333;
+    .ol-tooltip table {
+      width: 100%;
+      font-size: 0.85rem;
+      border-collapse: collapse;
+    }
+    .ol-tooltip th, .ol-tooltip td {
+      padding: 4px 6px;
+      text-align: left;
+    }
+    .ol-tooltip th {
+      font-weight: 500;
+      white-space: nowrap;
+      width: 40%;
+    }
+    .ol-tooltip .delete-btn {
+      margin-top: 6px;
+      width: 100%;
+      font-size: 0.8rem;
+      padding: 3px 6px;
     }
     #summary {
       font-size: 0.95rem;
@@ -198,7 +222,7 @@
       user-select: none;
     }
     .halt-point {
-      color: #d9534f; /* Red color for halt indication */
+      color: #d9534f;
       font-weight: bold;
     }
     .tool-button {
@@ -329,6 +353,11 @@
         min-height: 42px;
         font-size: 1.15rem;
       }
+      .ol-tooltip {
+        max-width: 90%;
+        left: 50% !important;
+        transform: translate(-50%, -100%) !important;
+      }
     }
   </style>
 </head>
@@ -388,7 +417,7 @@
         </div>
         <div class="legend-item">
           <svg width="18" height="18"><circle cx="8" cy="8" r="6" fill="yellow" stroke="white" stroke-width="2"/></svg>
-          <span>Stop Point (Speed = 0 km/h)</span>
+          <span>Stop Point</span>
         </div>
         <div class="legend-item">
           <svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="blue" stroke="white" stroke-width="1"/></svg>
@@ -419,10 +448,10 @@
         </div>
       </div>
       <div id="measure-tool" class="tool-button" title="Measure Distance" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle measure distance tool">
-        <i class="bi bi-rulers"></i> Measure
+        <i class="bi bi-rulers"></i> 
       </div>
       <div id="waypoint-tool" class="tool-button" title="Add Point" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle add waypoint tool">
-        <i class="bi bi-flag-fill"></i> Add Point
+        <i class="bi bi-flag-fill"></i> 
       </div>
       <div id="measure-result" role="status" aria-live="polite" aria-atomic="true"></div>
     </div>
@@ -446,6 +475,14 @@
       let waypointLayer;
       let modifyWaypointInteraction;
       let vectorSource;
+      
+      // Tooltip variables
+      const tooltip = document.createElement('div');
+      tooltip.className = 'ol-tooltip';
+      document.body.appendChild(tooltip);
+      let hoverTimeout;
+      let currentFeature = null;
+      let lastTooltipPosition = null;
 
       initMap();
       setupEventListeners();
@@ -466,7 +503,8 @@
         vectorSource = new ol.source.Vector();
         const vectorLayer = new ol.layer.Vector({
           source: vectorSource,
-          style: styleFunction
+          style: styleFunction,
+          zIndex: 1000
         });
 
         // Animation marker setup
@@ -519,24 +557,67 @@
           googleSatelliteLayer.setVisible(!e.target.checked);
         });
 
-        // Popup setup
-        const popupContainer = document.createElement("div");
-        popupContainer.className = "ol-popup";
-        const popupContent = document.createElement("div");
-        const closeBtn = document.createElement("div");
-        closeBtn.className = "close-button";
-        closeBtn.innerHTML = "&times;";
-        popupContainer.appendChild(closeBtn);
-        popupContainer.appendChild(popupContent);
-
-        const overlay = new ol.Overlay({
-          element: popupContainer,
-          positioning: "bottom-center",
-          offset: [0, -15],
-          stopEvent: false
+        // Hover interaction for tooltip
+        map.on('pointermove', function(evt) {
+          if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            hoverTimeout = null;
+          }
+          
+          if (measureToolActive || waypointToolActive) {
+            tooltip.className = 'ol-tooltip';
+            currentFeature = null;
+            return;
+          }
+          
+          const pixel = map.getEventPixel(evt.originalEvent);
+          let hoveredFeature = null;
+          
+          // Check all relevant layers
+          const layers = [
+            waypointLayer,
+            ...allFeatures.filter(f => f.visible).map(f => f.layer)
+          ];
+          
+          map.forEachFeatureAtPixel(
+            pixel,
+            function(feature, layer) {
+              if (layers.includes(layer)) {
+                hoveredFeature = feature;
+                return feature; // Stop searching once a feature is found
+              }
+            },
+            {
+              layerFilter: function(layer) {
+                return layers.includes(layer);
+              },
+              hitTolerance: 10 // Increase hit tolerance for smaller features
+            }
+          );
+          
+          if (hoveredFeature) {
+            currentFeature = hoveredFeature;
+            lastTooltipPosition = evt.coordinate;
+            hoverTimeout = setTimeout(() => showTooltip(evt.coordinate, hoveredFeature), 100);
+          } else {
+            tooltip.className = 'ol-tooltip';
+            currentFeature = null;
+          }
         });
-        closeBtn.onclick = () => overlay.setPosition(undefined);
-        map.addOverlay(overlay);
+        
+        // Hide tooltip when mouse leaves map
+        map.getViewport().addEventListener('mouseout', function() {
+          tooltip.className = 'ol-tooltip';
+          currentFeature = null;
+        });
+        
+        // Update tooltip position when moving over feature
+        map.on('pointermove', function(evt) {
+          if (currentFeature) {
+            lastTooltipPosition = evt.coordinate;
+            updateTooltipPosition(evt.coordinate);
+          }
+        });
 
         // Waypoint modify interaction
         modifyWaypointInteraction = new ol.interaction.Modify({
@@ -554,67 +635,47 @@
           });
         });
 
-        // Map single click to add waypoint
+        // Map single click to add waypoint or show tooltip
         map.on('singleclick', function(evt) {
-          if (!waypointToolActive) return;
+          if (waypointToolActive) {
+            let featureFound = false;
+            map.forEachFeatureAtPixel(evt.pixel, function() {
+              featureFound = true;
+            });
+            if (featureFound) return;
 
-          let featureFound = false;
-          map.forEachFeatureAtPixel(evt.pixel, function() {
-            featureFound = true;
-          });
-          if (featureFound) return;
-
-          const coords = ol.proj.toLonLat(evt.coordinate);
-          const name = prompt('Waypoint name? (optional)', '') || '';
-          addWaypoint(coords[1], coords[0], name);
-        });
-
-        // Map click to show popup
-        map.on("click", function (evt) {
-          let found = false;
-          map.forEachFeatureAtPixel(evt.pixel, function (feature) {
-            const props = feature.getProperties();
-            if (!props) return;
-
-            if (feature.getGeometry().getType() === "Point") {
-              const coord = feature.getGeometry().getCoordinates();
-              let infoHtml = "";
-              const lat = typeof props.lat === 'number' ? props.lat.toFixed(5) : "N/A";
-              const lon = typeof props.lon === 'number' ? props.lon.toFixed(5) : "N/A";
-
-              if (props.type === "stop") {
-                infoHtml = `<strong>Stop Point</strong><br/>
-                  Lat: ${lat}<br/>Lon: ${lon}<br/>Time: ${props.istTime || "N/A"}`;
-              } else if (props.type === "waypoint") {
-                infoHtml = `<strong>Waypoint</strong><br/>
-                  Name: ${props.name || "N/A"}<br/>Lat: ${lat}<br/>Lon: ${lon}`;
-                const idx = waypointSource.getFeatures().indexOf(feature);
-                if (idx !== -1) {
-                  infoHtml += `<br/><button class="btn btn-danger btn-sm mt-2" style="width:100%;" data-index="${idx}" onclick="deleteWaypointById(${idx})">Delete Waypoint</button>`;
+            const coords = ol.proj.toLonLat(evt.coordinate);
+            const name = prompt('Waypoint name? (optional)', '') || '';
+            addWaypoint(coords[1], coords[0], name);
+          } else {
+            const pixel = map.getEventPixel(evt.originalEvent);
+            let clickedFeature = null;
+            
+            const layers = [
+              waypointLayer,
+              ...allFeatures.filter(f => f.visible).map(f => f.layer)
+            ];
+            
+            map.forEachFeatureAtPixel(
+              pixel,
+              function(feature, layer) {
+                if (layers.includes(layer)) {
+                  clickedFeature = feature;
+                  return feature;
                 }
-              } else if (props.type === "trackpoint" || props.type === "start" || props.type === "end") {
-                infoHtml = `<strong>Track Point</strong><br/>
-                  Lat: ${lat}<br/>Lon: ${lon}<br/>
-                  Elevation: ${props.elevation !== undefined ? props.elevation.toFixed(2) : "N/A"} m<br/>
-                  Time (IST): ${props.istTime || "N/A"}<br/>
-                  Speed: ${props.speed !== undefined ? props.speed.toFixed(2) : "N/A"} km/h`;
-              } else {
-                infoHtml = `<strong>Point</strong><br/>Lat: ${lat}<br/>Lon: ${lon}`;
+              },
+              {
+                layerFilter: function(layer) {
+                  return layers.includes(layer);
+                },
+                hitTolerance: 10
               }
-              popupContent.innerHTML = infoHtml;
-              overlay.setPosition(coord);
-              found = true;
-            } else if (feature.getGeometry().getType() === "LineString") {
-              const coords = feature.getGeometry().getCoordinates();
-              const start = ol.proj.toLonLat(coords[0]);
-              const end = ol.proj.toLonLat(coords[coords.length - 1]);
-              infoHtml = `<strong>Track Line</strong><br/>Start: ${start[1].toFixed(5)}, ${start[0].toFixed(5)}<br/>End: ${end[1].toFixed(5)}, ${end[0].toFixed(5)}`;
-              popupContent.innerHTML = infoHtml;
-              overlay.setPosition(evt.coordinate);
-              found = true;
+            );
+            
+            if (clickedFeature) {
+              showTooltip(evt.coordinate, clickedFeature);
             }
-          });
-          if (!found) overlay.setPosition(undefined);
+          }
         });
 
         // Measure tool setup
@@ -651,6 +712,83 @@
           }, 5000);
         });
       }
+      
+      function showTooltip(coordinate, feature) {
+        if (!feature) return;
+        
+        const props = feature.getProperties();
+        const geomType = feature.getGeometry().getType();
+        
+        let tooltipHtml = '';
+        const [lon, lat] = ol.proj.toLonLat(coordinate);
+        
+        if (geomType === "Point") {
+          const type = props.type || 'unknown'; // Fallback for undefined type
+          if (type === "stop") {
+            tooltipHtml = `<table>
+              <tr><th>Stop Point</th><td></td></tr>
+              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
+              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
+              <tr><th>Time:</th><td>${props.istTime || "N/A"}</td></tr>`;
+            
+            if (props.haltDuration) {
+              tooltipHtml += `<tr><th>Halt Duration:</th><td>${props.haltDuration}</td></tr>`;
+            } else if (props.speed !== undefined) {
+              tooltipHtml += `<tr><th>Speed:</th><td>${props.speed?.toFixed(2) || "N/A"} km/h</td></tr>`;
+            }
+            
+            tooltipHtml += `</table>`;
+          } else if (type === "waypoint") {
+            tooltipHtml = `<table>
+              <tr><th>Waypoint</th><td></td></tr>
+              <tr><th>Name:</th><td>${props.name || "N/A"}</td></tr>
+              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
+              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
+            </table>`;
+            
+            const idx = waypointSource.getFeatures().indexOf(feature);
+            if (idx !== -1) {
+              tooltipHtml += `<button class="btn btn-danger btn-sm delete-btn" onclick="deleteWaypointById(${idx})">Delete Waypoint</button>`;
+            }
+          } else if (["trackpoint", "start", "end"].includes(type)) {
+            tooltipHtml = `<table>
+              <tr><th>Track Point</th><td></td></tr>
+              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
+              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
+              <tr><th>Elevation:</th><td>${props.elevation?.toFixed(2) || "N/A"} m</td></tr>
+              <tr><th>Time (IST):</th><td>${props.istTime || "N/A"}</td></tr>
+              <tr><th>Speed:</th><td>${props.speed?.toFixed(2) || "N/A"} km/h</td></tr>
+            </table>`;
+          } else {
+            tooltipHtml = `<table>
+              <tr><th>Unknown Point</th><td></td></tr>
+              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
+              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
+            </table>`;
+          }
+        } else if (geomType === "LineString") {
+          const coords = feature.getGeometry().getCoordinates();
+          const start = ol.proj.toLonLat(coords[0]);
+          const end = ol.proj.toLonLat(coords[coords.length - 1]);
+          
+          tooltipHtml = `<table>
+            <tr><th>Track Line</th><td></td></tr>
+            <tr><th>Start:</th><td>${start[1].toFixed(5)}, ${start[0].toFixed(5)}</td></tr>
+            <tr><th>End:</th><td>${end[1].toFixed(5)}, ${end[0].toFixed(5)}</td></tr>
+          </table>`;
+        }
+        
+        tooltip.innerHTML = tooltipHtml;
+        updateTooltipPosition(coordinate);
+        tooltip.className = 'ol-tooltip visible';
+      }
+      
+      function updateTooltipPosition(coordinate) {
+        if (!coordinate) return;
+        const pixel = map.getPixelFromCoordinate(coordinate);
+        tooltip.style.left = pixel[0] + 'px';
+        tooltip.style.top = (pixel[1] - 10) + 'px';
+      }
 
       function addWaypoint(lat, lon, name = "") {
         const feature = new ol.Feature({
@@ -680,6 +818,9 @@
         window.addEventListener('resize', () => {
           setTimeout(() => {
             map.updateSize();
+            if (currentFeature && lastTooltipPosition) {
+              updateTooltipPosition(lastTooltipPosition);
+            }
           }, 300);
         });
 
@@ -788,6 +929,7 @@
             document.getElementById("waypoint-tool").style.backgroundColor = '';
             document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
           }
+          tooltip.className = 'ol-tooltip';
         });
 
         document.getElementById("waypoint-tool").addEventListener("click", function() {
@@ -800,6 +942,7 @@
             document.getElementById("measure-tool").style.backgroundColor = '';
             document.getElementById("measure-tool").setAttribute('aria-pressed', false);
           }
+          tooltip.className = 'ol-tooltip';
         });
 
         document.getElementById('play-button').addEventListener('click', startAnimation);
@@ -980,6 +1123,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
         document.getElementById("measure-tool").setAttribute('aria-pressed', false);
         document.getElementById("waypoint-tool").style.backgroundColor = '';
         document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
+        tooltip.className = 'ol-tooltip';
       }
 
       function styleFunction(feature) {
@@ -990,7 +1134,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
           if (props.type === "start") {
             return new ol.style.Style({
               image: new ol.style.Circle({
-                radius: 7,
+                radius: 8,
                 fill: new ol.style.Fill({ color: "green" }),
                 stroke: new ol.style.Stroke({ color: "white", width: 2 })
               }),
@@ -1036,7 +1180,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
             return new ol.style.Style({
               image: new ol.style.Icon({
                 src: "https://cdn-icons-png.flaticon.com/512/252/252025.png",
-                scale: 0.06,
+                scale: 0.08,
                 anchor: [0.5, 1]
               }),
               text: props.name ? new ol.style.Text({
@@ -1050,7 +1194,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
           } else {
             return new ol.style.Style({
               image: new ol.style.Circle({
-                radius: 5,
+                radius: 6,
                 fill: new ol.style.Fill({ color: "blue" }),
                 stroke: new ol.style.Stroke({ color: "white", width: 1.5 })
               }),
@@ -1168,23 +1312,28 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
             features[features.length - 1].set("type", "end");
           }
 
-          for (let i = 0; i < speeds.length; i++) {
-            if (speeds[i] === 0) {
-              const pt = trkpts[i];
-              const lat = parseFloat(pt.getAttribute("lat"));
-              const lon = parseFloat(pt.getAttribute("lon"));
-              if (isNaN(lat) || isNaN(lon)) continue;
-              const timeStr = pt.getElementsByTagName("time")[0]?.textContent || null;
-              features.push(
-                new ol.Feature({
-                  geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
-                  lat,
-                  lon,
-                  istTime: convertToIST(timeStr),
-                  speed: speeds[i],
-                  type: "stop"
-                })
-              );
+          // Detect halt points based on time gaps > 10 minutes
+          const trackPoints = features.filter(f => ["trackpoint", "start", "end"].includes(f.get("type")) && f.get("time"));
+          trackPoints.sort((a, b) => new Date(a.get("time")) - new Date(b.get("time")));
+          for (let i = 1; i < trackPoints.length; i++) {
+            const prev = trackPoints[i - 1];
+            const curr = trackPoints[i];
+            const timeDiffMs = new Date(curr.get("time")) - new Date(prev.get("time"));
+            if (timeDiffMs > 10 * 60 * 1000) { // 10 minutes in milliseconds
+              const stopFeature = new ol.Feature({
+                geometry: prev.getGeometry().clone(),
+                type: "stop",
+                lat: prev.get("lat"),
+                lon: prev.get("lon"),
+                istTime: prev.get("istTime"),
+                haltDuration: Math.round(timeDiffMs / 60000) + " min" // Convert to minutes
+              });
+              // Check for duplicate at same position
+              const isDuplicate = features.some(f => f.get("type") === "stop" && 
+                f.getGeometry().getCoordinates().toString() === stopFeature.getGeometry().getCoordinates().toString());
+              if (!isDuplicate) {
+                features.push(stopFeature);
+              }
             }
           }
 
@@ -1299,12 +1448,30 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
             }
           }
 
-          // Mark stop points based on speed
-          features.forEach(f => {
-            if (f.get('type') === 'trackpoint' && f.get('speed') === 0) {
-              f.set('type', 'stop');
+          // Detect halt points based on time gaps > 10 minutes
+          const trackPoints = features.filter(f => ["trackpoint", "start", "end"].includes(f.get("type")) && f.get("time"));
+          trackPoints.sort((a, b) => new Date(a.get("time")) - new Date(b.get("time")));
+          for (let i = 1; i < trackPoints.length; i++) {
+            const prev = trackPoints[i - 1];
+            const curr = trackPoints[i];
+            const timeDiffMs = new Date(curr.get("time")) - new Date(prev.get("time"));
+            if (timeDiffMs > 10 * 60 * 1000) { // 10 minutes in milliseconds
+              const stopFeature = new ol.Feature({
+                geometry: prev.getGeometry().clone(),
+                type: "stop",
+                lat: prev.get("lat"),
+                lon: prev.get("lon"),
+                istTime: prev.get("istTime"),
+                haltDuration: Math.round(timeDiffMs / 60000) + " min" // Convert to minutes
+              });
+              // Check for duplicate at same position
+              const isDuplicate = features.some(f => f.get("type") === "stop" && 
+                f.getGeometry().getCoordinates().toString() === stopFeature.getGeometry().getCoordinates().toString());
+              if (!isDuplicate) {
+                features.push(stopFeature);
+              }
             }
-          });
+          }
 
           // Ensure start and end points
           const trackpoints = features.filter(f => ['trackpoint', 'start', 'end'].includes(f.get('type')));
@@ -1401,6 +1568,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
         ${props.time ? `<Data name="time"><value>${props.time}</value></Data>` : ""}
         ${props.istTime ? `<Data name="istTime"><value>${props.istTime}</value></Data>` : ""}
         ${props.speed !== undefined ? `<Data name="speed"><value>${props.speed.toFixed(2)}</value></Data>` : ""}
+        ${props.haltDuration ? `<Data name="haltDuration"><value>${props.haltDuration}</value></Data>` : ""}
       </ExtendedData>
     </Placemark>`;
           } else if (geom.getType() === "LineString") {
