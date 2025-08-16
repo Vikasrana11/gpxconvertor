@@ -13,6 +13,9 @@
   <!-- OpenLayers CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@7.5.2/ol.css" />
 
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
     html, body {
       margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial, sans-serif;
@@ -201,7 +204,7 @@
     }
     #time-slider-container {
       position: absolute;
-      top: 220px;
+      top: 380px;
       left: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 10px 14px;
@@ -238,19 +241,29 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      top: 70px;
+      left: 10px;
     }
     #measure-tool {
       top: 70px;
-      left: 10px;
+    }
+    #area-tool {
+      top: 120px;
+    }
+    #edit-tool {
+      top: 170px;
     }
     #waypoint-tool {
-      top: 120px;
-      left: 10px;
+      top: 220px;
+    }
+    #print-tool {
+      top: 270px;
+    }
+    #share-tool {
+      top: 320px;
     }
     #measure-result {
       position: absolute;
-      top: 170px;
+      top: 320px;
       left: 12px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.9);
@@ -319,6 +332,14 @@
     .layer-folder-content {
       padding-left: 15px;
     }
+    .delete-layer {
+      cursor: pointer;
+      margin-left: 10px;
+      color: #dc3545;
+    }
+    .delete-layer:hover {
+      color: #c82333;
+    }
     @media (max-width: 768px) {
       .main-content {
         flex-direction: column;
@@ -359,6 +380,123 @@
         transform: translate(-50%, -100%) !important;
       }
     }
+    @media print {
+      body > *:not(.map-area) {
+        display: none !important;
+      }
+      .map-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+      #map {
+        width: 100% !important;
+        height: 100% !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .map-area > *:not(#map) {
+        display: none !important;
+      }
+      .ol-tooltip, #legend, #layer-switch, .tool-button, #measure-result, #time-slider-container, #layer-treeview {
+        display: none !important;
+      }
+      @page {
+        margin: 0;
+      }
+    }
+   
+    /* Dark Mode Styles */
+    .dark-mode {
+      background-color: #121212;
+      color: #ffffff;
+    }
+    .dark-mode .topnavbar {
+      background-color: #1e1e1e;
+    }
+    .dark-mode .sidebar {
+      background-color: #1e1e1e;
+      border-right: 1px solid #333;
+    }
+    .dark-mode .btn-dark {
+      background-color: #333;
+      border-color: #444;
+      color: #fff;
+    }
+    .dark-mode #summary {
+      background: #1e1e1e;
+    }
+    .dark-mode #summary th {
+      background-color: #2c2c2c;
+    }
+    .dark-mode #summary td {
+      background-color: #242424;
+    }
+    .dark-mode #legend {
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #333;
+    }
+    .dark-mode #layer-switch {
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid #333;
+    }
+    .dark-mode #time-slider-container {
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #333;
+    }
+    .dark-mode .tool-button {
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #333;
+    }
+    .dark-mode #measure-result {
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #333;
+    }
+    .dark-mode #layer-treeview {
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #333;
+    }
+    .dark-mode .ol-tooltip {
+      background: rgba(0, 0, 0, 0.95);
+      border: 1px solid #333;
+      color: #fff;
+    }
+    .dark-mode .ol-tooltip:after {
+      border-top-color: rgba(0, 0, 0, 0.95);
+    }
+    .dark-mode .sidebar-section h3 {
+      color: #ddd;
+    }
+    .dark-mode .form-check-label {
+      color: #ddd;
+    }
+    .dark-mode #summary th, .dark-mode #summary td {
+      color: #ddd;
+    }
+    .dark-mode #legend h4, .dark-mode #legend .legend-item span {
+      color: #ddd;
+    }
+    .dark-mode #layer-switch .google-label, .dark-mode #layer-switch .osm-label {
+      color: #ddd;
+    }
+    .dark-mode #time-slider-container #time-display {
+      color: #ddd;
+    }
+    .dark-mode #measure-result {
+      color: #ddd;
+    }
+    .dark-mode #layer-treeview h4, .dark-mode #layer-treeview p {
+      color: #ddd;
+    }
+    .dark-mode .layer-folder-header span {
+      color: #ddd;
+    }
   </style>
 </head>
 <body>
@@ -367,6 +505,9 @@
       <i class="bi bi-list"></i>
     </button>
     <h1>Advanced GPX/KML/KMZ Converter</h1>
+    <button class="btn btn-dark ms-3" id="toggleTheme" aria-label="Toggle theme">
+      <i class="bi bi-moon"></i>
+    </button>
   </div>
   <div class="main-content">
     <div class="sidebar" id="sidebar" role="region" aria-label="Sidebar">
@@ -450,10 +591,37 @@
       <div id="measure-tool" class="tool-button" title="Measure Distance" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle measure distance tool">
         <i class="bi bi-rulers"></i> 
       </div>
+      <div id="area-tool" class="tool-button" title="Measure Area" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle measure area tool">
+        <i class="bi bi-square"></i> 
+      </div>
+      <div id="edit-tool" class="tool-button" title="Edit Features" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle edit mode">
+        <i class="bi bi-pencil"></i> 
+      </div>
       <div id="waypoint-tool" class="tool-button" title="Add Point" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle add waypoint tool">
         <i class="bi bi-flag-fill"></i> 
       </div>
+      <div id="print-tool" class="tool-button" title="Print Map" role="button" tabindex="0" aria-label="Print map">
+        <i class="bi bi-printer"></i> 
+      </div>
+      <div id="share-tool" class="tool-button" title="Share View" role="button" tabindex="0" aria-label="Generate shareable link">
+        <i class="bi bi-share"></i> 
+      </div>
       <div id="measure-result" role="status" aria-live="polite" aria-atomic="true"></div>
+    </div>
+  </div>
+  <!-- Share Modal -->
+  <div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="shareModalLabel">Shareable Link</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" id="shareLink" class="form-control" readonly>
+          <button class="btn btn-primary mt-2" id="copyLink">Copy</button>
+        </div>
+      </div>
     </div>
   </div>
   <!-- OpenLayers and dependencies -->
@@ -466,8 +634,11 @@
       let allFeatures = []; // Array of {name, features, source, layer, totalDistance, elevations, startTime, endTime, speeds, visible, fileType}
       let osmLayer, googleSatelliteLayer;
       let measureToolActive = false;
+      let areaToolActive = false;
       let waypointToolActive = false;
+      let editMode = false;
       let measureTool;
+      let areaTool;
       let animationInterval;
       let currentTrackPoints = [];
       let animationMarker;
@@ -484,8 +655,28 @@
       let currentFeature = null;
       let lastTooltipPosition = null;
 
+      const params = new URLSearchParams(window.location.search);
+
       initMap();
       setupEventListeners();
+
+      // Apply theme from params
+      if (params.has('theme') && params.get('theme') === '1') {
+        document.body.classList.add('dark-mode');
+      }
+
+      class PseudoFeature {
+        constructor(geom, props) {
+          this.geom = geom;
+          this.props = props;
+        }
+        getGeometry() {
+          return this.geom;
+        }
+        get(key) {
+          return this.props[key];
+        }
+      }
 
       function initMap() {
         osmLayer = new ol.layer.Tile({
@@ -551,6 +742,20 @@
           ]
         });
 
+        // Apply params to view
+        if (params.has('center') && params.has('zoom')) {
+          const [lon, lat] = params.get('center').split(',').map(Number);
+          map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+          map.getView().setZoom(Number(params.get('zoom')));
+        }
+
+        if (params.has('base')) {
+          const isOsm = params.get('base') === '1';
+          osmLayer.setVisible(isOsm);
+          googleSatelliteLayer.setVisible(!isOsm);
+          document.getElementById("layer-toggle").checked = isOsm;
+        }
+
         // Layer toggle checkbox
         document.getElementById("layer-toggle").addEventListener("change", function (e) {
           osmLayer.setVisible(e.target.checked);
@@ -564,7 +769,7 @@
             hoverTimeout = null;
           }
           
-          if (measureToolActive || waypointToolActive) {
+          if (measureToolActive || areaToolActive || waypointToolActive) {
             tooltip.className = 'ol-tooltip';
             currentFeature = null;
             return;
@@ -625,7 +830,7 @@
           hitDetection: waypointLayer,
         });
         map.addInteraction(modifyWaypointInteraction);
-        modifyWaypointInteraction.setActive(true);
+        modifyWaypointInteraction.setActive(false);
 
         modifyWaypointInteraction.on('modifyend', function(evt) {
           evt.features.forEach(function(feat) {
@@ -674,6 +879,9 @@
             
             if (clickedFeature) {
               showTooltip(evt.coordinate, clickedFeature);
+            } else {
+              tooltip.className = 'ol-tooltip';
+              currentFeature = null;
             }
           }
         });
@@ -711,6 +919,35 @@
             document.getElementById('measure-result').style.display = 'none';
           }, 5000);
         });
+
+        // Area tool setup
+        areaTool = new ol.interaction.Draw({
+          source: vectorSource,
+          type: 'Polygon',
+          style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+              color: 'rgba(0, 0, 255, 0.7)',
+              width: 2
+            }),
+            fill: new ol.style.Fill({
+              color: 'rgba(0, 0, 255, 0.2)'
+            })
+          })
+        });
+        areaTool.setActive(false);
+        map.addInteraction(areaTool);
+
+        areaTool.on('drawend', function(evt) {
+          const geometry = evt.feature.getGeometry();
+          const area = ol.sphere.getArea(geometry, {projection: map.getView().getProjection()});
+          document.getElementById('measure-result').innerHTML = `Area: ${(area / 1000000).toFixed(2)} km²`;
+          document.getElementById('measure-result').style.display = 'block';
+
+          setTimeout(() => {
+            vectorSource.removeFeature(evt.feature);
+            document.getElementById('measure-result').style.display = 'none';
+          }, 5000);
+        });
       }
       
       function showTooltip(coordinate, feature) {
@@ -723,59 +960,78 @@
         const [lon, lat] = ol.proj.toLonLat(coordinate);
         
         if (geomType === "Point") {
-          const type = props.type || 'unknown'; // Fallback for undefined type
-          if (type === "stop") {
+            const type = props.type || 'unknown';
             tooltipHtml = `<table>
-              <tr><th>Stop Point</th><td></td></tr>
-              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
-              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
-              <tr><th>Time:</th><td>${props.istTime || "N/A"}</td></tr>`;
+                <tr><th>${type.charAt(0).toUpperCase() + type.slice(1)}</th><td></td></tr>
+                ${props.name ? `<tr><th>Name:</th><td>${props.name}</td></tr>` : ''}
+                <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
+                <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>`;
+            
+            if (props.elevation !== undefined) {
+                tooltipHtml += `<tr><th>Elevation:</th><td>${props.elevation?.toFixed(2) || "N/A"} m</td></tr>`;
+            }
+            
+            if (props.istTime) {
+                tooltipHtml += `<tr><th>Time (IST):</th><td>${props.istTime || "N/A"}</td></tr>`;
+            }
             
             if (props.haltDuration) {
-              tooltipHtml += `<tr><th>Halt Duration:</th><td>${props.haltDuration}</td></tr>`;
+                tooltipHtml += `<tr><th>Halt Duration:</th><td>${props.haltDuration}</td></tr>`;
             } else if (props.speed !== undefined) {
-              tooltipHtml += `<tr><th>Speed:</th><td>${props.speed?.toFixed(2) || "N/A"} km/h</td></tr>`;
+                tooltipHtml += `<tr><th>Speed:</th><td>${props.speed?.toFixed(2) || "N/A"} km/h</td></tr>`;
+            }
+            
+            if (props.description) {
+                tooltipHtml += `<tr><th>Description:</th><td>${props.description}</td></tr>`;
             }
             
             tooltipHtml += `</table>`;
-          } else if (type === "waypoint") {
-            tooltipHtml = `<table>
-              <tr><th>Waypoint</th><td></td></tr>
-              <tr><th>Name:</th><td>${props.name || "N/A"}</td></tr>
-              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
-              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
-            </table>`;
             
-            const idx = waypointSource.getFeatures().indexOf(feature);
-            if (idx !== -1) {
-              tooltipHtml += `<button class="btn btn-danger btn-sm delete-btn" onclick="deleteWaypointById(${idx})">Delete Waypoint</button>`;
+            if (props.type === "waypoint") {
+                const idx = waypointSource.getFeatures().indexOf(feature);
+                if (idx !== -1) {
+                    tooltipHtml += `<button class="btn btn-danger btn-sm delete-btn" onclick="deleteWaypointById(${idx})">Delete Waypoint</button>`;
+                }
             }
-          } else if (["trackpoint", "start", "end"].includes(type)) {
-            tooltipHtml = `<table>
-              <tr><th>Track Point</th><td></td></tr>
-              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
-              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
-              <tr><th>Elevation:</th><td>${props.elevation?.toFixed(2) || "N/A"} m</td></tr>
-              <tr><th>Time (IST):</th><td>${props.istTime || "N/A"}</td></tr>
-              <tr><th>Speed:</th><td>${props.speed?.toFixed(2) || "N/A"} km/h</td></tr>
-            </table>`;
-          } else {
-            tooltipHtml = `<table>
-              <tr><th>Unknown Point</th><td></td></tr>
-              <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
-              <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>
-            </table>`;
-          }
+        } else if (geomType === "MultiPoint") {
+            const coords = feature.getGeometry().getCoordinates();
+            let minDist = Infinity;
+            let closestIndex = -1;
+            const mouseCoord = coordinate;
+            for (let i = 0; i < coords.length; i++) {
+                const dx = coords[i][0] - mouseCoord[0];
+                const dy = coords[i][1] - mouseCoord[1];
+                const dist = dx * dx + dy * dy;
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestIndex = i;
+                }
+            }
+            if (closestIndex !== -1) {
+                const pointData = props.pointsData[closestIndex];
+                tooltipHtml = `<table>
+                    <tr><th>Track Point</th><td></td></tr>
+                    ${pointData.name ? `<tr><th>Name:</th><td>${pointData.name}</td></tr>` : ''}
+                    <tr><th>Lat:</th><td>${pointData.lat.toFixed(5)}</td></tr>
+                    <tr><th>Lon:</th><td>${pointData.lon.toFixed(5)}</td></tr>
+                    ${pointData.elevation !== undefined ? `<tr><th>Elevation:</th><td>${pointData.elevation?.toFixed(2) || "N/A"} m</td></tr>` : ''}
+                    ${pointData.istTime ? `<tr><th>Time (IST):</th><td>${pointData.istTime || "N/A"}</td></tr>` : ''}
+                    ${pointData.speed !== undefined ? `<tr><th>Speed:</th><td>${pointData.speed?.toFixed(2) || "N/A"} km/h</td></tr>` : ''}
+                    ${pointData.description ? `<tr><th>Description:</th><td>${pointData.description}</td></tr>` : ''}
+                </table>`;
+            }
         } else if (geomType === "LineString") {
-          const coords = feature.getGeometry().getCoordinates();
-          const start = ol.proj.toLonLat(coords[0]);
-          const end = ol.proj.toLonLat(coords[coords.length - 1]);
-          
-          tooltipHtml = `<table>
-            <tr><th>Track Line</th><td></td></tr>
-            <tr><th>Start:</th><td>${start[1].toFixed(5)}, ${start[0].toFixed(5)}</td></tr>
-            <tr><th>End:</th><td>${end[1].toFixed(5)}, ${end[0].toFixed(5)}</td></tr>
-          </table>`;
+            const coords = feature.getGeometry().getCoordinates();
+            const start = ol.proj.toLonLat(coords[0]);
+            const end = ol.proj.toLonLat(coords[coords.length - 1]);
+            
+            tooltipHtml = `<table>
+                <tr><th>Track Line</th><td></td></tr>
+                ${props.name ? `<tr><th>Name:</th><td>${props.name}</td></tr>` : ''}
+                <tr><th>Start:</th><td>${start[1].toFixed(5)}, ${start[0].toFixed(5)}</td></tr>
+                <tr><th>End:</th><td>${end[1].toFixed(5)}, ${end[0].toFixed(5)}</td></tr>
+                ${props.description ? `<tr><th>Description:</th><td>${props.description}</td></tr>` : ''}
+            </table>`;
         }
         
         tooltip.innerHTML = tooltipHtml;
@@ -804,6 +1060,8 @@
         const feat = waypointSource.getFeatures()[index];
         if (feat) {
           waypointSource.removeFeature(feat);
+          tooltip.className = 'ol-tooltip';
+          currentFeature = null;
         }
       }
 
@@ -815,6 +1073,13 @@
           }, 300);
         });
 
+        document.getElementById("toggleTheme").addEventListener("click", function() {
+          document.body.classList.toggle("dark-mode");
+          const icon = this.querySelector('i');
+          icon.classList.toggle('bi-moon');
+          icon.classList.toggle('bi-sun');
+        });
+
         window.addEventListener('resize', () => {
           setTimeout(() => {
             map.updateSize();
@@ -824,7 +1089,7 @@
           }, 300);
         });
 
-        document.getElementById("inputfile").addEventListener("change", function (event) {
+        document.getElementById("inputfile").addEventListener("change", async function (event) {
           const files = event.target.files;
           if (!files.length) return;
 
@@ -832,85 +1097,188 @@
           waypointSource.clear();
           updateLayerTreeview();
 
+          const promises = [];
           for (const file of files) {
-            const reader = new FileReader();
-            reader.onload = async function (e) {
-              try {
-                let data;
-                const fileName = file.name.toLowerCase();
-                let fileType = fileName.endsWith('.gpx') ? 'gpx' : 'kml/kmz';
+            const promise = new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = async function (e) {
+                try {
+                  let data;
+                  const fileName = file.name.toLowerCase();
+                  let fileType = fileName.endsWith('.gpx') ? 'gpx' : 'kml/kmz';
 
-                if (fileName.endsWith('.gpx')) {
-                  data = parseGPX(e.target.result, file.name);
-                } else if (fileName.endsWith('.kml')) {
-                  data = parseKML(e.target.result, file.name);
-                } else if (fileName.endsWith('.kmz')) {
-                  const zip = await JSZip.loadAsync(file);
-                  const kmlFile = Object.keys(zip.files).find(name => name.endsWith('.kml'));
-                  if (!kmlFile) throw new Error('No KML file found in KMZ');
-                  const kmlContent = await zip.file(kmlFile).async('string');
-                  data = parseKML(kmlContent, file.name);
-                } else {
-                  throw new Error('Unsupported file type');
-                }
-
-                // Create a new vector source and layer for this file
-                const fileSource = new ol.source.Vector();
-                const fileLayer = new ol.layer.Vector({
-                  source: fileSource,
-                  zIndex: 1040,
-                  style: styleFunction
-                });
-                map.addLayer(fileLayer);
-
-                // Add modify interaction for this layer
-                const modifyInteraction = new ol.interaction.Modify({
-                  source: fileSource,
-                  deleteCondition: function(event) {
-                    return ol.events.condition.shiftKeyOnly(event) && ol.events.condition.singleClick(event);
+                  if (fileName.endsWith('.gpx')) {
+                    data = parseGPX(e.target.result, file.name);
+                  } else if (fileName.endsWith('.kml')) {
+                    data = parseKML(e.target.result, file.name);
+                  } else if (fileName.endsWith('.kmz')) {
+                    const zip = await JSZip.loadAsync(file);
+                    const kmlFile = Object.keys(zip.files).find(name => name.endsWith('.kml'));
+                    if (!kmlFile) throw new Error('No KML file found in KMZ');
+                    const kmlContent = await zip.file(kmlFile).async('string');
+                    data = parseKML(kmlContent, file.name);
+                  } else {
+                    throw new Error('Unsupported file type');
                   }
-                });
-                map.addInteraction(modifyInteraction);
-                modifyInteraction.setActive(true);
 
-                // Add features to source
-                fileSource.addFeatures(data.features);
+                  // Create a new vector source and layer for this file
+                  const fileSource = new ol.source.Vector();
+                  const fileLayer = new ol.layer.Vector({
+                    source: fileSource,
+                    zIndex: 1040,
+                    style: styleFunction
+                  });
+                  map.addLayer(fileLayer);
 
-                data.source = fileSource;
-                data.layer = fileLayer;
-                data.visible = true;
-                data.fileType = fileType;
-                allFeatures.push(data);
+                  // Add modify interaction for this layer
+                  const modifyInteraction = new ol.interaction.Modify({
+                    source: fileSource,
+                    deleteCondition: function(event) {
+                      return ol.events.condition.shiftKeyOnly(event) && ol.events.condition.singleClick(event);
+                    }
+                  });
+                  map.addInteraction(modifyInteraction);
+                  modifyInteraction.setActive(editMode);
 
-                updateLayerTreeview();
-                updateSummary();
+                  modifyInteraction.on('modifyend', function(evt) {
+                    const source = evt.target.get('source');
+                    evt.features.forEach(function(feat) {
+                      if (feat.get('type') === 'multi_trackpoints') {
+                        const coords = feat.getGeometry().getCoordinates();
+                        const pointsData = feat.get('pointsData');
+                        for (let i = 0; i < coords.length; i++) {
+                          const [lon, lat] = ol.proj.toLonLat(coords[i]);
+                          pointsData[i].lon = lon;
+                          pointsData[i].lat = lat;
+                        }
+                      } else if (feat.getGeometry().getType() === 'Point') {
+                        const [lon, lat] = ol.proj.toLonLat(feat.getGeometry().getCoordinates());
+                        feat.set('lon', lon);
+                        feat.set('lat', lat);
+                      }
+                    });
 
-                if (data.features.some(f => f.get('type') === 'trackpoint')) {
-                  setupTimeSlider();
+                    // Rebuild line and update distances/speeds
+                    let trackCoords = [];
+                    const feats = source.getFeatures();
+                    const startFeat = feats.find(f => f.get('type') === 'start');
+                    if (startFeat) trackCoords.push(startFeat.getGeometry().getCoordinates());
+                    const multiFeat = feats.find(f => f.get('type') === 'multi_trackpoints');
+                    if (multiFeat) trackCoords = trackCoords.concat(multiFeat.getGeometry().getCoordinates());
+                    const endFeat = feats.find(f => f.get('type') === 'end');
+                    if (endFeat) trackCoords.push(endFeat.getGeometry().getCoordinates());
+
+                    const lineFeat = feats.find(f => f.get('type') === 'track');
+                    if (lineFeat) {
+                      lineFeat.getGeometry().setCoordinates(trackCoords);
+                    }
+
+                    // Update totalDistance and speeds
+                    const fileData = allFeatures.find(fd => fd.source === source);
+                    if (fileData) {
+                      // Calculate totalDistance
+                      fileData.totalDistance = 0;
+                      for (let i = 1; i < trackCoords.length; i++) {
+                        const from = ol.proj.toLonLat(trackCoords[i - 1]);
+                        const to = ol.proj.toLonLat(trackCoords[i]);
+                        fileData.totalDistance += haversine(from[1], from[0], to[1], to[0]);
+                      }
+
+                      // Collect times
+                      let times = [];
+                      if (startFeat) times.push(startFeat.get('time'));
+                      if (multiFeat) times = times.concat(multiFeat.get('pointsData').map(pd => pd.time));
+                      if (endFeat) times.push(endFeat.get('time'));
+
+                      // Calculate speeds
+                      let speeds = new Array(times.length).fill(0);
+                      for (let i = 1; i < times.length; i++) {
+                        if (times[i] && times[i - 1]) {
+                          const dist = haversine(
+                            ol.proj.toLonLat(trackCoords[i - 1])[1],
+                            ol.proj.toLonLat(trackCoords[i - 1])[0],
+                            ol.proj.toLonLat(trackCoords[i])[1],
+                            ol.proj.toLonLat(trackCoords[i])[0]
+                          );
+                          const timeDiff = (new Date(times[i]) - new Date(times[i - 1])) / 1000;
+                          if (timeDiff > 0) speeds[i] = (dist / timeDiff) * 3.6;
+                        }
+                      }
+                      fileData.speeds = speeds;
+
+                      // Update point speeds
+                      if (startFeat) startFeat.set('speed', speeds[0]);
+                      if (multiFeat) {
+                        const pointsData = multiFeat.get('pointsData');
+                        for (let j = 0; j < pointsData.length; j++) {
+                          pointsData[j].speed = speeds[1 + j];
+                        }
+                      }
+                      if (endFeat) endFeat.set('speed', speeds[speeds.length - 1]);
+
+                      updateSummary();
+                    }
+                  });
+
+                  // Add features to source
+                  fileSource.addFeatures(data.features);
+
+                  data.source = fileSource;
+                  data.layer = fileLayer;
+                  data.visible = true;
+                  data.fileType = fileType;
+                  allFeatures.push(data);
+
+                  updateLayerTreeview();
+                  updateSummary();
+
+                  if (data.features.some(f => f.get('type') === 'trackpoint' || f.get('type') === 'multi_trackpoints')) {
+                    setupTimeSlider();
+                  }
+
+                  resolve();
+                } catch (err) {
+                  alert(`Error parsing file "${file.name}": ${err.message}`);
+                  reject(err);
                 }
-
-                const extent = ol.extent.createEmpty();
-                allFeatures
-                  .filter(f => f.visible)
-                  .forEach(f => f.source.getFeatures().forEach(feat => ol.extent.extend(extent, feat.getGeometry().getExtent())));
-                if (!ol.extent.isEmpty(extent)) {
-                  map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
-                }
-
-                document.getElementById("downloadKml").disabled = allFeatures.filter(f => f.visible).length === 0;
-                document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
-
-              } catch (err) {
-                alert(`Error parsing file "${file.name}": ${err.message}`);
+              };
+              reader.onerror = function () {
+                alert(`Error reading file "${file.name}"`);
+                reject();
+              };
+              if (file.name.toLowerCase().endsWith('.kmz')) {
+                reader.readAsArrayBuffer(file);
+              } else {
+                reader.readAsText(file);
               }
-            };
-            reader.onerror = function () {
-              alert(`Error reading file "${file.name}"`);
-            };
-            if (file.name.toLowerCase().endsWith('.kmz')) {
-              reader.readAsArrayBuffer(file);
-            } else {
-              reader.readAsText(file);
+            });
+            promises.push(promise);
+          }
+
+          await Promise.all(promises);
+
+          const extent = ol.extent.createEmpty();
+          allFeatures
+            .filter(f => f.visible)
+            .forEach(f => f.source.getFeatures().forEach(feat => ol.extent.extend(extent, feat.getGeometry().getExtent())));
+          if (!ol.extent.isEmpty(extent)) {
+            map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
+          }
+
+          document.getElementById("downloadKml").disabled = allFeatures.filter(f => f.visible).length === 0;
+          document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
+
+          // Apply visible from params if matching length
+          if (params.has('vis')) {
+            const visArr = params.get('vis').split(',').map(v => v === '1');
+            if (visArr.length === allFeatures.length) {
+              allFeatures.forEach((f, i) => {
+                f.visible = visArr[i];
+                f.layer.setVisible(f.visible);
+              });
+              updateLayerTreeview();
+              updateSummary();
+              adjustMapView();
             }
           }
         });
@@ -924,8 +1292,70 @@
           measureTool.setActive(measureToolActive);
           this.style.backgroundColor = measureToolActive ? '#d4edda' : '';
           this.setAttribute('aria-pressed', measureToolActive);
-          if (measureToolActive && waypointToolActive) {
+          if (measureToolActive) {
+            areaToolActive = false;
             waypointToolActive = false;
+            editMode = false;
+            areaTool.setActive(false);
+            document.getElementById("area-tool").style.backgroundColor = '';
+            document.getElementById("area-tool").setAttribute('aria-pressed', false);
+            document.getElementById("waypoint-tool").style.backgroundColor = '';
+            document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
+            document.getElementById("edit-tool").style.backgroundColor = '';
+            document.getElementById("edit-tool").setAttribute('aria-pressed', false);
+            map.getInteractions().forEach(i => {
+              if (i instanceof ol.interaction.Modify) {
+                i.setActive(false);
+              }
+            });
+          }
+          tooltip.className = 'ol-tooltip';
+        });
+
+        document.getElementById("area-tool").addEventListener("click", function() {
+          areaToolActive = !areaToolActive;
+          areaTool.setActive(areaToolActive);
+          this.style.backgroundColor = areaToolActive ? '#d4edda' : '';
+          this.setAttribute('aria-pressed', areaToolActive);
+          if (areaToolActive) {
+            measureToolActive = false;
+            waypointToolActive = false;
+            editMode = false;
+            measureTool.setActive(false);
+            document.getElementById("measure-tool").style.backgroundColor = '';
+            document.getElementById("measure-tool").setAttribute('aria-pressed', false);
+            document.getElementById("waypoint-tool").style.backgroundColor = '';
+            document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
+            document.getElementById("edit-tool").style.backgroundColor = '';
+            document.getElementById("edit-tool").setAttribute('aria-pressed', false);
+            map.getInteractions().forEach(i => {
+              if (i instanceof ol.interaction.Modify) {
+                i.setActive(false);
+              }
+            });
+          }
+          tooltip.className = 'ol-tooltip';
+        });
+
+        document.getElementById("edit-tool").addEventListener("click", function() {
+          editMode = !editMode;
+          this.style.backgroundColor = editMode ? '#d4edda' : '';
+          this.setAttribute('aria-pressed', editMode);
+          map.getInteractions().forEach(i => {
+            if (i instanceof ol.interaction.Modify) {
+              i.setActive(editMode);
+            }
+          });
+          if (editMode) {
+            measureToolActive = false;
+            areaToolActive = false;
+            waypointToolActive = false;
+            measureTool.setActive(false);
+            areaTool.setActive(false);
+            document.getElementById("measure-tool").style.backgroundColor = '';
+            document.getElementById("measure-tool").setAttribute('aria-pressed', false);
+            document.getElementById("area-tool").style.backgroundColor = '';
+            document.getElementById("area-tool").setAttribute('aria-pressed', false);
             document.getElementById("waypoint-tool").style.backgroundColor = '';
             document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
           }
@@ -936,13 +1366,70 @@
           waypointToolActive = !waypointToolActive;
           this.style.backgroundColor = waypointToolActive ? '#d4edda' : '';
           this.setAttribute('aria-pressed', waypointToolActive);
-          if (waypointToolActive && measureToolActive) {
+          if (waypointToolActive) {
             measureToolActive = false;
+            areaToolActive = false;
+            editMode = false;
             measureTool.setActive(false);
+            areaTool.setActive(false);
             document.getElementById("measure-tool").style.backgroundColor = '';
             document.getElementById("measure-tool").setAttribute('aria-pressed', false);
+            document.getElementById("area-tool").style.backgroundColor = '';
+            document.getElementById("area-tool").setAttribute('aria-pressed', false);
+            document.getElementById("edit-tool").style.backgroundColor = '';
+            document.getElementById("edit-tool").setAttribute('aria-pressed', false);
+            map.getInteractions().forEach(i => {
+              if (i instanceof ol.interaction.Modify) {
+                i.setActive(false);
+              }
+            });
           }
           tooltip.className = 'ol-tooltip';
+        });
+
+        document.getElementById("print-tool").addEventListener("click", function() {
+          map.once('rendercomplete', async function() {
+            const mapCanvas = map.getViewport().querySelector('canvas');
+            if (!mapCanvas) return;
+            const pdf = new jspdf.jsPDF('landscape', 'pt', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const size = map.getSize();
+            const widthRatio = pdfWidth / size[0];
+            const heightRatio = pdfHeight / size[1];
+            const ratio = Math.min(widthRatio, heightRatio);
+            const w = size[0] * ratio;
+            const h = size[1] * ratio;
+            pdf.addImage(mapCanvas.toDataURL('image/png'), 'PNG', 0, 0, w, h);
+            pdf.save('map.pdf');
+          });
+          map.renderSync();
+        });
+
+        document.getElementById("share-tool").addEventListener("click", function() {
+          const view = map.getView();
+          const center = ol.proj.toLonLat(view.getCenter());
+          const zoom = view.getZoom();
+          const base = document.getElementById('layer-toggle').checked ? 1 : 0;
+          const theme = document.body.classList.contains('dark-mode') ? 1 : 0;
+          const vis = allFeatures.map(f => f.visible ? 1 : 0).join(',');
+          const shareParams = new URLSearchParams({
+            center: `${center[0].toFixed(4)},${center[1].toFixed(4)}`,
+            zoom: zoom.toFixed(2),
+            base,
+            theme,
+            vis
+          });
+          const shareLink = `${window.location.origin}${window.location.pathname}?${shareParams.toString()}`;
+          document.getElementById('shareLink').value = shareLink;
+          const modal = new bootstrap.Modal(document.getElementById('shareModal'));
+          modal.show();
+        });
+
+        document.getElementById('copyLink').addEventListener('click', function() {
+          navigator.clipboard.writeText(document.getElementById('shareLink').value).then(() => {
+            alert('Link copied to clipboard!');
+          });
         });
 
         document.getElementById('play-button').addEventListener('click', startAnimation);
@@ -1003,6 +1490,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" id="layer-gpx-${index}" ${fileData.visible ? 'checked' : ''} aria-label="Toggle visibility of layer ${fileData.name}">
                   <label class="form-check-label" for="layer-gpx-${index}">${fileData.name}</label>
+                  <span class="delete-layer" data-type="gpx" data-index="${index}"><i class="bi bi-trash"></i></span>
                 </div>
               `).join('')}
             </div>
@@ -1038,6 +1526,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" id="layer-kml-${index}" ${fileData.visible ? 'checked' : ''} aria-label="Toggle visibility of layer ${fileData.name}">
                   <label class="form-check-label" for="layer-kml-${index}">${fileData.name}</label>
+                  <span class="delete-layer" data-type="kml" data-index="${index}"><i class="bi bi-trash"></i></span>
                 </div>
               `).join('')}
             </div>
@@ -1057,6 +1546,36 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
             });
           });
         }
+
+        // Add delete listeners
+        document.querySelectorAll('.delete-layer').forEach(el => {
+          el.addEventListener('click', () => {
+            const type = el.dataset.type;
+            const localIdx = parseInt(el.dataset.index);
+            let fileData;
+            let globalIdx;
+            if (type === 'gpx') {
+              fileData = allFeatures.filter(f => f.fileType === 'gpx')[localIdx];
+            } else {
+              fileData = allFeatures.filter(f => f.fileType === 'kml/kmz')[localIdx];
+            }
+            globalIdx = allFeatures.indexOf(fileData);
+            if (globalIdx !== -1) {
+              allFeatures.splice(globalIdx, 1);
+              map.removeLayer(fileData.layer);
+              map.getInteractions().forEach(i => {
+                if (i instanceof ol.interaction.Modify && i.get('source') === fileData.source) {
+                  map.removeInteraction(i);
+                }
+              });
+              updateLayerTreeview();
+              updateSummary();
+              adjustMapView();
+              document.getElementById("downloadKml").disabled = allFeatures.filter(f => f.visible).length === 0;
+              document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
+            }
+          });
+        });
       }
 
       function adjustMapView() {
@@ -1082,6 +1601,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
         waypointSource.clear();
         map.removeInteraction(modifyWaypointInteraction);
         map.removeInteraction(measureTool);
+        map.removeInteraction(areaTool);
 
         modifyWaypointInteraction = new ol.interaction.Modify({
           source: waypointSource,
@@ -1097,9 +1617,24 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
             })
           })
         });
+        areaTool = new ol.interaction.Draw({
+          source: vectorSource,
+          type: 'Polygon',
+          style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+              color: 'rgba(0, 0, 255, 0.7)',
+              width: 2
+            }),
+            fill: new ol.style.Fill({
+              color: 'rgba(0, 0, 255, 0.2)'
+            })
+          })
+        });
         measureTool.setActive(false);
+        areaTool.setActive(false);
         map.addInteraction(modifyWaypointInteraction);
         map.addInteraction(measureTool);
+        map.addInteraction(areaTool);
 
         updateLayerTreeview();
         document.getElementById("summary").innerHTML = `<table class="table table-bordered table-sm"><tbody><tr><th colspan="2">Load one or more .gpx, .kml, or .kmz files to see details.</th></tr></tbody></table>`;
@@ -1118,9 +1653,15 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
         }
         currentTrackPoints = [];
         measureToolActive = false;
+        areaToolActive = false;
         waypointToolActive = false;
+        editMode = false;
         document.getElementById("measure-tool").style.backgroundColor = '';
         document.getElementById("measure-tool").setAttribute('aria-pressed', false);
+        document.getElementById("area-tool").style.backgroundColor = '';
+        document.getElementById("area-tool").setAttribute('aria-pressed', false);
+        document.getElementById("edit-tool").style.backgroundColor = '';
+        document.getElementById("edit-tool").setAttribute('aria-pressed', false);
         document.getElementById("waypoint-tool").style.backgroundColor = '';
         document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
         tooltip.className = 'ol-tooltip';
@@ -1130,7 +1671,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
         const geomType = feature.getGeometry().getType();
         const props = feature.getProperties();
 
-        if (geomType === "Point") {
+        if (geomType === "Point" || geomType === "MultiPoint") {
           if (props.type === "start") {
             return new ol.style.Style({
               image: new ol.style.Circle({
@@ -1268,6 +1809,8 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
             throw new Error("No track points found in GPX file");
           }
 
+          const lonLats = [];
+          const times = [];
           for (let i = 0; i < trkpts.length; i++) {
             const pt = trkpts[i];
             const lat = parseFloat(pt.getAttribute("lat"));
@@ -1276,77 +1819,113 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
 
             const ele = parseFloat(pt.getElementsByTagName("ele")[0]?.textContent || 0);
             const timeStr = pt.getElementsByTagName("time")[0]?.textContent || null;
+            lonLats.push([lon, lat]);
+            times.push(timeStr);
+            elevations.push(ele);
+
             let speed = 0;
-            if (i > 0 && timeStr) {
-              const prev = trkpts[i - 1];
-              const prevLat = parseFloat(prev.getAttribute("lat"));
-              const prevLon = parseFloat(prev.getAttribute("lon"));
-              const prevTimeStr = prev.getElementsByTagName("time")[0]?.textContent;
-              if (!isNaN(prevLat) && !isNaN(prevLon) && prevTimeStr) {
-                const dist = haversine(prevLat, prevLon, lat, lon);
-                totalDistance += dist;
-                const timeDiff = (new Date(timeStr) - new Date(prevTimeStr)) / 1000;
+            if (i > 0) {
+              const dist = haversine(lonLats[i-1][1], lonLats[i-1][0], lat, lon);
+              totalDistance += dist;
+              if (timeStr && times[i-1]) {
+                const timeDiff = (new Date(timeStr) - new Date(times[i-1])) / 1000;
                 if (timeDiff > 0) speed = (dist / timeDiff) * 3.6;
               }
             }
-
             speeds.push(speed);
-            elevations.push(ele);
-            lineCoords.push([lon, lat]);
-            features.push(
-              new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
-                lat,
-                lon,
-                elevation: ele,
-                time: timeStr,
-                istTime: convertToIST(timeStr),
-                speed,
-                type: "trackpoint"
-              })
-            );
           }
 
-          if (features.length > 0) {
-            features[0].set("type", "start");
-            features[features.length - 1].set("type", "end");
+          // Start feature
+          if (lonLats.length > 0) {
+            features.push(new ol.Feature({
+              geometry: new ol.geom.Point(ol.proj.fromLonLat([lonLats[0][0], lonLats[0][1]])),
+              type: "start",
+              lat: lonLats[0][1],
+              lon: lonLats[0][0],
+              elevation: elevations[0],
+              time: times[0],
+              istTime: convertToIST(times[0]),
+              speed: speeds[0]
+            }));
           }
 
-          // Detect halt points based on time gaps > 10 minutes
-          const trackPoints = features.filter(f => ["trackpoint", "start", "end"].includes(f.get("type")) && f.get("time"));
-          trackPoints.sort((a, b) => new Date(a.get("time")) - new Date(b.get("time")));
-          for (let i = 1; i < trackPoints.length; i++) {
-            const prev = trackPoints[i - 1];
-            const curr = trackPoints[i];
-            const timeDiffMs = new Date(curr.get("time")) - new Date(prev.get("time"));
-            if (timeDiffMs > 10 * 60 * 1000) { // 10 minutes in milliseconds
-              const stopFeature = new ol.Feature({
-                geometry: prev.getGeometry().clone(),
-                type: "stop",
-                lat: prev.get("lat"),
-                lon: prev.get("lon"),
-                istTime: prev.get("istTime"),
-                haltDuration: Math.round(timeDiffMs / 60000) + " min" // Convert to minutes
+          // Middle multi point
+          if (lonLats.length > 2) {
+            const middleCoords = [];
+            const middleData = [];
+            for (let i = 1; i < lonLats.length - 1; i++) {
+              middleCoords.push(ol.proj.fromLonLat([lonLats[i][0], lonLats[i][1]]));
+              middleData.push({
+                lat: lonLats[i][1],
+                lon: lonLats[i][0],
+                elevation: elevations[i],
+                time: times[i],
+                istTime: convertToIST(times[i]),
+                speed: speeds[i]
               });
-              // Check for duplicate at same position
-              const isDuplicate = features.some(f => f.get("type") === "stop" && 
-                f.getGeometry().getCoordinates().toString() === stopFeature.getGeometry().getCoordinates().toString());
-              if (!isDuplicate) {
-                features.push(stopFeature);
+            }
+            features.push(new ol.Feature({
+              geometry: new ol.geom.MultiPoint(middleCoords),
+              type: "multi_trackpoints",
+              pointsData: middleData
+            }));
+          }
+
+          // End feature
+          if (lonLats.length > 1) {
+            features.push(new ol.Feature({
+              geometry: new ol.geom.Point(ol.proj.fromLonLat([lonLats[lonLats.length - 1][0], lonLats[lonLats.length - 1][1]])),
+              type: "end",
+              lat: lonLats[lonLats.length - 1][1],
+              lon: lonLats[lonLats.length - 1][0],
+              elevation: elevations[elevations.length - 1],
+              time: times[times.length - 1],
+              istTime: convertToIST(times[times.length - 1]),
+              speed: speeds[speeds.length - 1]
+            }));
+          }
+
+          // Detect halt points
+          for (let i = 1; i < times.length; i++) {
+            if (times[i] && times[i - 1]) {
+              const timeDiffMs = new Date(times[i]) - new Date(times[i - 1]);
+              if (timeDiffMs > 10 * 60 * 1000) {
+                const stopLat = lonLats[i - 1][1];
+                const stopLon = lonLats[i - 1][0];
+                const stopFeature = new ol.Feature({
+                  geometry: new ol.geom.Point(ol.proj.fromLonLat([stopLon, stopLat])),
+                  type: "stop",
+                  lat: stopLat,
+                  lon: stopLon,
+                  istTime: convertToIST(times[i - 1]),
+                  haltDuration: Math.round(timeDiffMs / 60000) + " min"
+                });
+                const isDuplicate = features.some(f => f.get("type") === "stop" && 
+                  f.get("lat") === stopLat && f.get("lon") === stopLon);
+                if (!isDuplicate) {
+                  features.push(stopFeature);
+                }
               }
             }
           }
 
-          if (lineCoords.length > 1) {
-            features.push(
-              new ol.Feature({
-                geometry: new ol.geom.LineString(lineCoords.map(c => ol.proj.fromLonLat(c))),
-                type: "track"
-              })
-            );
+          // Line feature
+          if (lonLats.length > 1) {
+            features.push(new ol.Feature({
+              geometry: new ol.geom.LineString(lonLats.map(c => ol.proj.fromLonLat([c[0], c[1]]))),
+              type: "track"
+            }));
           }
 
-          return { features, totalDistance, elevations, startTime: trkpts[0]?.getElementsByTagName("time")[0]?.textContent, endTime: trkpts[trkpts.length - 1]?.getElementsByTagName("time")[0]?.textContent, speeds, name: filename };
+          return { 
+            features, 
+            totalDistance, 
+            elevations, 
+            startTime: times[0], 
+            endTime: times[times.length - 1], 
+            speeds, 
+            name: filename 
+          };
         } catch (err) {
           throw new Error(`Failed to parse GPX file "${filename}": ${err.message}`);
         }
@@ -1361,130 +1940,232 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
           }
 
           const features = [];
-          const lineCoords = [];
           let totalDistance = 0;
-          const placemarks = kml.getElementsByTagName("Placemark");
           let startTime = null;
           let endTime = null;
           const speeds = [];
           const elevations = [];
+          const placemarks = kml.getElementsByTagName("Placemark");
 
           if (placemarks.length === 0) {
             throw new Error("No placemarks found in KML file");
           }
 
+          // Collect track points and lines separately
+          let trackPoints = [];
+          let lineFeatures = [];
+
           for (const placemark of placemarks) {
             const name = placemark.getElementsByTagName("name")[0]?.textContent || '';
+            const description = placemark.getElementsByTagName("description")[0]?.textContent || '';
             const point = placemark.getElementsByTagName("Point")[0];
             const lineString = placemark.getElementsByTagName("LineString")[0];
             const extendedData = placemark.getElementsByTagName("ExtendedData")[0];
-            let props = { name };
+            
+            let props = { 
+                name,
+                description: description.trim() || null
+            };
 
+            // Extract extended data
             if (extendedData) {
-              for (const data of extendedData.getElementsByTagName("Data")) {
-                const key = data.getAttribute("name");
-                const value = data.getElementsByTagName("value")[0]?.textContent;
-                if (key && value) props[key] = value;
-              }
+                for (const data of extendedData.getElementsByTagName("Data")) {
+                    const key = data.getAttribute("name");
+                    const value = data.getElementsByTagName("value")[0]?.textContent;
+                    if (key && value) props[key] = value;
+                }
+            }
+
+            // Parse description for additional properties if it's HTML
+            if (props.description && props.description.includes('<td>')) {
+                try {
+                    const descDoc = parser.parseFromString(props.description, "text/html");
+                    const tables = descDoc.getElementsByTagName('table');
+                    if (tables.length > 0) {
+                        const rows = tables[0].getElementsByTagName('tr');
+                        for (const row of rows) {
+                            const cells = row.getElementsByTagName('td');
+                            if (cells.length >= 2) {
+                                const key = cells[0].textContent.trim().replace(':', '');
+                                const value = cells[1].textContent.trim();
+                                if (key && value) props[key] = value;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log("Couldn't parse description HTML", e);
+                }
             }
 
             if (point) {
-              const coordinates = point.getElementsByTagName("coordinates")[0]?.textContent.trim();
-              if (!coordinates) continue;
-              const coords = coordinates.split(',').map(parseFloat);
-              if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) continue;
+                const coordinates = point.getElementsByTagName("coordinates")[0]?.textContent.trim();
+                if (!coordinates) continue;
+                const coords = coordinates.split(',').map(parseFloat);
+                if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) continue;
 
-              const lon = coords[0];
-              const lat = coords[1];
-              const elevation = coords[2] || 0;
-              const type = props.type || (name.toLowerCase().includes('start') ? 'start' : name.toLowerCase().includes('end') ? 'end' : 'trackpoint');
-              const time = props.time || null;
-              const speed = props.speed ? parseFloat(props.speed) : undefined;
+                const lon = coords[0];
+                const lat = coords[1];
+                const elevation = coords[2] || 0;
+                const time = props.time || null;
+                const speed = props.speed ? parseFloat(props.speed) : 0;
+                
+                // Determine point type based on name or properties
+                const type = props.type || 
+                             (name.toLowerCase().includes('start') ? 'start' : 
+                              name.toLowerCase().includes('end') ? 'end' : 
+                              name.toLowerCase().includes('stop') ? 'stop' : 
+                              name.toLowerCase().includes('waypoint') ? 'waypoint' : 'trackpoint');
 
-              features.push(
-                new ol.Feature({
-                  geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
-                  lat,
-                  lon,
-                  elevation,
-                  type,
-                  time,
-                  istTime: time ? convertToIST(time) : "N/A",
-                  speed,
-                  name
-                })
-              );
-
-              if (type === "trackpoint" && time) {
-                if (!startTime) startTime = time;
-                endTime = time;
-                if (speed !== undefined) speeds.push(speed);
-                if (elevation !== undefined) elevations.push(elevation);
-              }
-            } else if (lineString) {
-              const coordinates = lineString.getElementsByTagName("coordinates")[0]?.textContent.trim();
-              if (!coordinates) continue;
-              const coords = coordinates.split(/\s+/).map(coord => {
-                const [lon, lat, ele] = coord.split(",").map(parseFloat);
-                if (isNaN(lon) || isNaN(lat)) return null;
-                lineCoords.push([lon, lat]);
-                return ol.proj.fromLonLat([lon, lat]);
-              }).filter(coord => coord !== null);
-
-              if (coords.length > 1) {
-                for (let i = 1; i < coords.length; i++) {
-                  const from = ol.proj.toLonLat(coords[i-1]);
-                  const to = ol.proj.toLonLat(coords[i]);
-                  totalDistance += haversine(from[1], from[0], to[1], to[0]);
+                if (type === "trackpoint" || type === "start" || type === "end") {
+                    trackPoints.push({
+                        lon, lat, elevation, time, speed, istTime: convertToIST(time),
+                        name, description: props.description
+                    });
+                    elevations.push(elevation);
+                    speeds.push(speed);
+                    if (time) {
+                        if (!startTime || new Date(time) < new Date(startTime)) startTime = time;
+                        if (!endTime || new Date(time) > new Date(endTime)) endTime = time;
+                    }
+                } else {
+                    // Other points like waypoints or stops
+                    features.push(new ol.Feature({
+                        geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
+                        lat, lon, elevation, type, time, istTime: convertToIST(time), 
+                        speed, name, description: props.description
+                    }));
                 }
+            } else if (lineString) {
+                const coordinates = lineString.getElementsByTagName("coordinates")[0]?.textContent.trim();
+                if (!coordinates) continue;
+                const coords = coordinates.split(/\s+/).map(coord => {
+                    const [lon, lat, ele] = coord.split(",").map(parseFloat);
+                    if (isNaN(lon) || isNaN(lat)) return null;
+                    return ol.proj.fromLonLat([lon, lat]);
+                }).filter(coord => coord !== null);
 
-                features.push(
-                  new ol.Feature({
-                    geometry: new ol.geom.LineString(coords),
-                    type: "track"
-                  })
-                );
-              }
+                if (coords.length > 1) {
+                    for (let i = 1; i < coords.length; i++) {
+                        const from = ol.proj.toLonLat(coords[i-1]);
+                        const to = ol.proj.toLonLat(coords[i]);
+                        totalDistance += haversine(from[1], from[0], to[1], to[0]);
+                    }
+                    lineFeatures.push(new ol.Feature({
+                        geometry: new ol.geom.LineString(coords),
+                        type: "track",
+                        name,
+                        description: props.description
+                    }));
+                }
             }
-          }
-
-          // Detect halt points based on time gaps > 10 minutes
-          const trackPoints = features.filter(f => ["trackpoint", "start", "end"].includes(f.get("type")) && f.get("time"));
-          trackPoints.sort((a, b) => new Date(a.get("time")) - new Date(b.get("time")));
-          for (let i = 1; i < trackPoints.length; i++) {
-            const prev = trackPoints[i - 1];
-            const curr = trackPoints[i];
-            const timeDiffMs = new Date(curr.get("time")) - new Date(prev.get("time"));
-            if (timeDiffMs > 10 * 60 * 1000) { // 10 minutes in milliseconds
-              const stopFeature = new ol.Feature({
-                geometry: prev.getGeometry().clone(),
-                type: "stop",
-                lat: prev.get("lat"),
-                lon: prev.get("lon"),
-                istTime: prev.get("istTime"),
-                haltDuration: Math.round(timeDiffMs / 60000) + " min" // Convert to minutes
-              });
-              // Check for duplicate at same position
-              const isDuplicate = features.some(f => f.get("type") === "stop" && 
-                f.getGeometry().getCoordinates().toString() === stopFeature.getGeometry().getCoordinates().toString());
-              if (!isDuplicate) {
-                features.push(stopFeature);
-              }
-            }
-          }
-
-          // Ensure start and end points
-          const trackpoints = features.filter(f => ['trackpoint', 'start', 'end'].includes(f.get('type')));
-          if (trackpoints.length > 0) {
-            trackpoints[0].set('type', 'start');
-            trackpoints[trackpoints.length - 1].set('type', 'end');
-          }
-
-          return { features, totalDistance, elevations, startTime, endTime, speeds, name: filename };
-        } catch (err) {
-          throw new Error(`Failed to parse KML file "${filename}": ${err.message}`);
         }
-      }
+
+        // Process track points
+        if (trackPoints.length > 0) {
+            // Sort by time if available
+            if (trackPoints.some(p => p.time)) {
+                trackPoints.sort((a, b) => new Date(a.time) - new Date(b.time));
+            }
+
+            // Recalculate speeds if times are present
+            if (trackPoints[0].time) {
+                speeds[0] = 0;
+                for (let i = 1; i < trackPoints.length; i++) {
+                    const dist = haversine(trackPoints[i-1].lat, trackPoints[i-1].lon, trackPoints[i].lat, trackPoints[i].lon);
+                    const timeDiff = (new Date(trackPoints[i].time) - new Date(trackPoints[i-1].time)) / 1000;
+                    speeds[i] = (timeDiff > 0) ? (dist / timeDiff) * 3.6 : 0;
+                }
+            }
+
+            // Start
+            const startPoint = trackPoints[0];
+            features.push(new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([startPoint.lon, startPoint.lat])),
+                type: "start",
+                lat: startPoint.lat,
+                lon: startPoint.lon,
+                elevation: startPoint.elevation,
+                time: startPoint.time,
+                istTime: startPoint.istTime,
+                speed: speeds[0],
+                name: startPoint.name,
+                description: startPoint.description
+            }));
+
+            // Middle
+            if (trackPoints.length > 2) {
+                const middleCoords = [];
+                const middleData = [];
+                for (let i = 1; i < trackPoints.length - 1; i++) {
+                    const p = trackPoints[i];
+                    middleCoords.push(ol.proj.fromLonLat([p.lon, p.lat]));
+                    middleData.push({
+                        lat: p.lat,
+                        lon: p.lon,
+                        elevation: p.elevation,
+                        time: p.time,
+                        istTime: p.istTime,
+                        speed: speeds[i],
+                        name: p.name,
+                        description: p.description
+                    });
+                }
+                features.push(new ol.Feature({
+                    geometry: new ol.geom.MultiPoint(middleCoords),
+                    type: "multi_trackpoints",
+                    pointsData: middleData
+                }));
+            }
+
+            // End
+            const endPoint = trackPoints[trackPoints.length - 1];
+            features.push(new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([endPoint.lon, endPoint.lat])),
+                type: "end",
+                lat: endPoint.lat,
+                lon: endPoint.lon,
+                elevation: endPoint.elevation,
+                time: endPoint.time,
+                istTime: endPoint.istTime,
+                speed: speeds[speeds.length - 1],
+                name: endPoint.name,
+                description: endPoint.description
+            }));
+        }
+
+        // Detect halts if times present
+        if (trackPoints.length > 1 && trackPoints[0].time) {
+            for (let i = 1; i < trackPoints.length; i++) {
+                const timeDiffMs = new Date(trackPoints[i].time) - new Date(trackPoints[i - 1].time);
+                if (timeDiffMs > 10 * 60 * 1000) {
+                    const stopPoint = trackPoints[i - 1];
+                    const stopFeature = new ol.Feature({
+                        geometry: new ol.geom.Point(ol.proj.fromLonLat([stopPoint.lon, stopPoint.lat])),
+                        type: "stop",
+                        lat: stopPoint.lat,
+                        lon: stopPoint.lon,
+                        istTime: stopPoint.istTime,
+                        haltDuration: Math.round(timeDiffMs / 60000) + " min",
+                        name: stopPoint.name,
+                        description: stopPoint.description
+                    });
+                    const isDuplicate = features.some(f => f.get("type") === "stop" && 
+                        f.get("lat") === stopPoint.lat && f.get("lon") === stopPoint.lon);
+                    if (!isDuplicate) {
+                        features.push(stopFeature);
+                    }
+                }
+            }
+        }
+
+        // Add line features
+        features.push(...lineFeatures);
+
+        return { features, totalDistance, elevations, startTime, endTime, speeds, name: filename };
+    } catch (err) {
+        throw new Error(`Failed to parse KML file "${filename}": ${err.message}`);
+    }
+}
 
       function generateKML({ features, name }) {
         let kmlOutput = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1499,6 +2180,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
     </Style>
     <Style id="startPoint">
       <IconStyle>
+        <IconStyle>
         <color>ff00ff00</color>
         <scale>1.2</scale>
         <Icon>
@@ -1557,6 +2239,7 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
             kmlOutput += `
     <Placemark>
       <name>${props.name || ''}</name>
+      ${props.description ? `<description><![CDATA[${props.description}]]></description>` : ''}
       <styleUrl>#${styleId}</styleUrl>
       <Point>
         <coordinates>${lon},${lat}</coordinates>
@@ -1571,6 +2254,29 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
         ${props.haltDuration ? `<Data name="haltDuration"><value>${props.haltDuration}</value></Data>` : ""}
       </ExtendedData>
     </Placemark>`;
+          } else if (geom.getType() === "MultiPoint") {
+            const coords = geom.getCoordinates();
+            const pointsData = props.pointsData || [];
+            for (let i = 0; i < coords.length; i++) {
+              const [lon, lat] = ol.proj.toLonLat(coords[i]);
+              const pointProps = pointsData[i] || {};
+              kmlOutput += `
+    <Placemark>
+      <name>${pointProps.name || ''}</name>
+      ${pointProps.description ? `<description><![CDATA[${pointProps.description}]]></description>` : ''}
+      <styleUrl>#trackPoint</styleUrl>
+      <Point>
+        <coordinates>${lon},${lat}</coordinates>
+      </Point>
+      <ExtendedData>
+        <Data name="type"><value>trackpoint</value></Data>
+        ${pointProps.elevation ? `<Data name="elevation"><value>${pointProps.elevation}</value></Data>` : ""}
+        ${pointProps.time ? `<Data name="time"><value>${pointProps.time}</value></Data>` : ""}
+        ${pointProps.istTime ? `<Data name="istTime"><value>${pointProps.istTime}</value></Data>` : ""}
+        ${pointProps.speed !== undefined ? `<Data name="speed"><value>${pointProps.speed.toFixed(2)}</value></Data>` : ""}
+      </ExtendedData>
+    </Placemark>`;
+            }
           } else if (geom.getType() === "LineString") {
             const coordinates = geom.getCoordinates().map(coord => {
               const [lon, lat] = ol.proj.toLonLat(coord);
@@ -1579,6 +2285,8 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
 
             kmlOutput += `
     <Placemark>
+      <name>${props.name || ''}</name>
+      ${props.description ? `<description><![CDATA[${props.description}]]></description>` : ''}
       <styleUrl>#trackStyle</styleUrl>
       <LineString>
         <tessellate>1</tessellate>
@@ -1646,13 +2354,26 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
         for (const fileData of allFeatures.filter(f => f.visible)) {
           for (const f of fileData.source.getFeatures()) {
             const t = f.get("type");
-            if (t === "trackpoint" || t === "start" || t === "end") trackCount++;
-            else if (t === "stop") stopCount++;
-            if (f.get("elevation") !== undefined && !isNaN(f.get("elevation"))) {
-              minElevation = Math.min(minElevation, f.get("elevation"));
-              maxElevation = Math.max(maxElevation, f.get("elevation"));
+            if (t === "trackpoint" || t === "start" || t === "end") {
+              trackCount++;
+              if (f.get("elevation") !== undefined && !isNaN(f.get("elevation"))) {
+                minElevation = Math.min(minElevation, f.get("elevation"));
+                maxElevation = Math.max(maxElevation, f.get("elevation"));
+              }
+              if (f.get("speed") !== undefined && !isNaN(f.get("speed"))) speeds.push(f.get("speed"));
+            } else if (t === "stop") {
+              stopCount++;
+            } else if (t === "multi_trackpoints") {
+              const pointsData = f.get("pointsData") || [];
+              trackCount += pointsData.length;
+              pointsData.forEach(pd => {
+                if (pd.elevation !== undefined && !isNaN(pd.elevation)) {
+                  minElevation = Math.min(minElevation, pd.elevation);
+                  maxElevation = Math.max(maxElevation, pd.elevation);
+                }
+                if (pd.speed !== undefined && !isNaN(pd.speed)) speeds.push(pd.speed);
+              });
             }
-            if (f.get("speed") !== undefined && !isNaN(f.get("speed"))) speeds.push(f.get("speed"));
           }
           totalDistance += fileData.totalDistance || 0;
           if (fileData.startTime && (!startTime || new Date(fileData.startTime) < new Date(startTime))) startTime = fileData.startTime;
@@ -1683,16 +2404,30 @@ ${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSour
       }
 
       function setupTimeSlider() {
-        currentTrackPoints = allFeatures
-          .filter(f => f.visible)
-          .flatMap(f => f.source.getFeatures().filter(feat => ['trackpoint', 'start', 'end', 'stop'].includes(feat.get('type'))))
-          .filter(f => f.get('time'))
-          .sort((a, b) => new Date(a.get('time')) - new Date(b.get('time')));
+        currentTrackPoints = [];
+        allFeatures.filter(f => f.visible).forEach(file => {
+          file.source.getFeatures().forEach(feat => {
+            if (['start', 'end', 'stop', 'trackpoint'].includes(feat.get('type')) && feat.get('time')) {
+              currentTrackPoints.push(feat);
+            } else if (feat.get('type') === 'multi_trackpoints') {
+              const coords = feat.getGeometry().getCoordinates();
+              const data = feat.get('pointsData');
+              for (let i = 0; i < data.length; i++) {
+                if (data[i].time) {
+                  const pointGeom = new ol.geom.Point(coords[i]);
+                  currentTrackPoints.push(new PseudoFeature(pointGeom, data[i]));
+                }
+              }
+            }
+          });
+        });
 
         if (currentTrackPoints.length === 0) {
           document.getElementById('time-slider-container').style.display = 'none';
           return;
         }
+
+        currentTrackPoints.sort((a, b) => new Date(a.get('time')) - new Date(b.get('time')));
 
         const slider = document.getElementById('time-slider');
         slider.max = currentTrackPoints.length - 1;
