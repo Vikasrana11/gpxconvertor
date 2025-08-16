@@ -3,23 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Advanced GPX/KML/KMZ Converter - Fully Interactive Editor</title>
-  <!-- Pointer Event Polyfill for older mobile browsers -->
+  <title>Advanced GPX/KML/KMZ Converter</title>
+  <!-- Pointer Event Polyfill for older browsers -->
   <script src="https://cdn.jsdelivr.net/npm/pepjs@0.5.3/dist/pep.min.js"></script>
-  <!-- Bootstrap CSS for UI -->
+  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" />
   <!-- OpenLayers CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@7.5.2/ol.css" />
-
+  <!-- Chart.js for elevation profile -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+  <!-- JSZip for KMZ parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     html, body {
-      margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial, sans-serif;
-      display: flex; flex-direction: column;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
     }
     .topnavbar {
       background-color: #333;
@@ -33,7 +39,6 @@
       flex-grow: 1;
       margin: 0;
       font-size: 1.5rem;
-      user-select: none;
     }
     .main-content {
       flex-grow: 1;
@@ -58,30 +63,25 @@
     .map-area {
       flex-grow: 1;
       position: relative;
-      display: flex;
-      flex-direction: column;
       overflow: hidden;
     }
     #map {
       width: 100%;
       height: 100%;
     }
-    /* Tooltip style */
     .ol-tooltip {
       position: absolute;
       background: rgba(255, 255, 255, 0.95);
       padding: 8px 12px;
       border-radius: 6px;
       border: 1px solid #ccc;
-      min-width: 180px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       font-size: 0.9rem;
       pointer-events: none;
       z-index: 10000;
-      transform: translate(-50%, -100%);
+      max-width: 300px;
       opacity: 0;
       transition: opacity 0.2s ease;
-      max-width: 300px;
     }
     .ol-tooltip.visible {
       opacity: 1;
@@ -92,8 +92,6 @@
       bottom: -6px;
       left: 50%;
       margin-left: -6px;
-      width: 0;
-      height: 0;
       border-left: 6px solid transparent;
       border-right: 6px solid transparent;
       border-top: 6px solid rgba(255, 255, 255, 0.95);
@@ -121,9 +119,9 @@
     #summary {
       font-size: 0.95rem;
       background: #f8f9fa;
-      padding: 6px;
+      padding: 10px;
       border-radius: 4px;
-      margin-bottom: 7px;
+      margin-bottom: 10px;
     }
     #summary table {
       width: 100%;
@@ -166,12 +164,10 @@
       max-width: 200px;
       z-index: 1000;
       font-size: 0.85rem;
-      user-select: none;
       display: none;
     }
     #legend h4 {
       margin: 0 0 10px 0;
-      font-weight: bold;
       font-size: 1rem;
     }
     .legend-item {
@@ -181,39 +177,33 @@
       gap: 8px;
     }
     .legend-item svg, .legend-item img {
-      margin-right: 4px;
       flex-shrink: 0;
-    }
-    .legend-item span {
-      user-select: none;
     }
     #layer-switch {
       position: absolute;
-      top: 620px;
+      top: 680px;
       left: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 7px 12px;
       border-radius: 6px;
-      border: 2px solid #ccc;
-      font-size: 0.9rem;
+      border: 1px solid #ccc;
       z-index: 1000;
+      font-size: 0.9rem;
       display: flex;
       align-items: center;
       gap: 8px;
-      user-select: none;
     }
     #time-slider-container {
       position: absolute;
-      top: 380px;
+      top: 480px;
       left: 10px;
       background: rgba(255, 255, 255, 0.9);
-      padding: 10px 14px;
+      padding: 10px;
       border-radius: 6px;
       border: 1px solid #ccc;
       width: 120px;
       z-index: 1000;
       display: none;
-      user-select: none;
     }
     #time-slider {
       width: 100%;
@@ -221,12 +211,7 @@
     #time-display {
       text-align: center;
       margin-top: 5px;
-      font-weight: bold;
-      user-select: none;
-    }
-    .halt-point {
-      color: #d9534f;
-      font-weight: bold;
+      font-size: 0.85rem;
     }
     .tool-button {
       position: absolute;
@@ -236,63 +221,34 @@
       border-radius: 6px;
       border: 1px solid #ccc;
       cursor: pointer;
-      user-select: none;
       font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
       left: 10px;
     }
-    #measure-tool {
-      top: 70px;
-    }
-    #area-tool {
-      top: 120px;
-    }
-    #edit-tool {
-      top: 170px;
-    }
-    #waypoint-tool {
-      top: 220px;
-    }
-    #print-tool {
-      top: 270px;
-    }
-    #share-tool {
-      top: 320px;
-    }
+    #measure-tool { top: 110px; }
+    #area-tool { top: 160px; }
+    #edit-tool { top: 210px; }
+    #waypoint-tool { top: 260px; }
+    #print-tool { top: 310px; }
+    #share-tool { top: 360px; }
     #measure-result {
       position: absolute;
-      top: 320px;
-      left: 12px;
-      z-index: 1000;
+      top: 410px;
+      left: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 8px 12px;
       border-radius: 6px;
       border: 1px solid #ccc;
-      display: none;
+      z-index: 1000;
       font-size: 0.9rem;
-      user-select: none;
+      display: none;
       max-width: 220px;
-      word-wrap: break-word;
-    }
-    .sidebar-section {
-      margin-bottom: 25px;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 15px;
-    }
-    .sidebar-section h3 {
-      font-size: 1.15rem;
-      margin-bottom: 10px;
-      color: #333;
-      user-select: none;
     }
     #layer-treeview {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: 10px;
+      right: 10px;
       background: rgba(255, 255, 255, 0.9);
-      padding: 10px 12px;
+      padding: 10px;
       border: 1px solid #ccc;
       border-radius: 6px;
       max-width: 220px;
@@ -300,34 +256,20 @@
       overflow-y: auto;
       z-index: 1000;
       font-size: 0.85rem;
-      user-select: none;
     }
     #layer-treeview h4 {
       margin: 0 0 8px 0;
-      font-weight: bold;
       font-size: 0.95rem;
     }
     #layer-treeview .form-check {
       margin-bottom: 6px;
-      padding-left: 1.5rem;
-    }
-    #layer-treeview .form-check-label {
-      cursor: pointer;
-      user-select: none;
-    }
-    .layer-folder {
-      margin-bottom: 10px;
     }
     .layer-folder-header {
       cursor: pointer;
       font-weight: bold;
       padding: 5px 0;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-    }
-    .layer-folder-header:hover {
-      color: #007bff;
     }
     .layer-folder-content {
       padding-left: 15px;
@@ -340,6 +282,19 @@
     .delete-layer:hover {
       color: #c82333;
     }
+    .sidebar-section {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .sidebar-section h3 {
+      font-size: 1.15rem;
+      margin-bottom: 10px;
+    }
+    #elevationChart {
+      max-height: 200px;
+      width: 100%;
+    }
     @media (max-width: 768px) {
       .main-content {
         flex-direction: column;
@@ -348,32 +303,25 @@
         width: 100%;
         height: auto;
         max-height: 300px;
-        overflow-y: auto;
       }
       .sidebar.collapsed {
         height: 0;
         max-height: 0;
-        padding: 0;
-        overflow: hidden;
       }
       .map-area {
-        flex-grow: 1;
         height: calc(100vh - 50px);
       }
       #legend, #layer-switch, .tool-button, #measure-result, #time-slider-container, #layer-treeview {
         position: static;
         max-width: 90%;
         margin: 10px auto;
-        text-align: center;
       }
-      #waypoint-tool {
-        top: 70px;
-        margin-left: 10px;
-      }
-      button, .btn {
-        min-height: 42px;
-        font-size: 1.15rem;
-      }
+      #measure-tool { margin-top: 10px; }
+      #area-tool { margin-top: 60px; }
+      #edit-tool { margin-top: 110px; }
+      #waypoint-tool { margin-top: 160px; }
+      #print-tool { margin-top: 210px; }
+      #share-tool { margin-top: 260px; }
       .ol-tooltip {
         max-width: 90%;
         left: 50% !important;
@@ -381,9 +329,7 @@
       }
     }
     @media print {
-      body > *:not(.map-area) {
-        display: none !important;
-      }
+      body > *:not(.map-area) { display: none !important; }
       .map-area {
         position: absolute;
         top: 0;
@@ -391,123 +337,43 @@
         width: 100vw !important;
         height: 100vh !important;
         margin: 0 !important;
-        padding: 0 !important;
-        overflow: visible !important;
       }
       #map {
         width: 100% !important;
         height: 100% !important;
-        position: absolute;
-        top: 0;
-        left: 0;
       }
-      .map-area > *:not(#map) {
-        display: none !important;
-      }
-      .ol-tooltip, #legend, #layer-switch, .tool-button, #measure-result, #time-slider-container, #layer-treeview {
-        display: none !important;
-      }
-      @page {
-        margin: 0;
-      }
+      .map-area > *:not(#map) { display: none !important; }
+      @page { margin: 0; }
     }
-   
-    /* Dark Mode Styles */
     .dark-mode {
       background-color: #121212;
       color: #ffffff;
     }
-    .dark-mode .topnavbar {
-      background-color: #1e1e1e;
-    }
-    .dark-mode .sidebar {
-      background-color: #1e1e1e;
-      border-right: 1px solid #333;
-    }
-    .dark-mode .btn-dark {
-      background-color: #333;
-      border-color: #444;
-      color: #fff;
-    }
-    .dark-mode #summary {
-      background: #1e1e1e;
-    }
-    .dark-mode #summary th {
-      background-color: #2c2c2c;
-    }
-    .dark-mode #summary td {
-      background-color: #242424;
-    }
-    .dark-mode #legend {
-      background: rgba(0, 0, 0, 0.9);
-      border: 1px solid #333;
-    }
-    .dark-mode #layer-switch {
-      background: rgba(0, 0, 0, 0.9);
-      border: 2px solid #333;
-    }
-    .dark-mode #time-slider-container {
-      background: rgba(0, 0, 0, 0.9);
-      border: 1px solid #333;
-    }
-    .dark-mode .tool-button {
-      background: rgba(0, 0, 0, 0.9);
-      border: 1px solid #333;
-    }
-    .dark-mode #measure-result {
-      background: rgba(0, 0, 0, 0.9);
-      border: 1px solid #333;
-    }
-    .dark-mode #layer-treeview {
-      background: rgba(0, 0, 0, 0.9);
-      border: 1px solid #333;
-    }
-    .dark-mode .ol-tooltip {
-      background: rgba(0, 0, 0, 0.95);
-      border: 1px solid #333;
-      color: #fff;
-    }
-    .dark-mode .ol-tooltip:after {
-      border-top-color: rgba(0, 0, 0, 0.95);
-    }
-    .dark-mode .sidebar-section h3 {
-      color: #ddd;
-    }
-    .dark-mode .form-check-label {
-      color: #ddd;
-    }
-    .dark-mode #summary th, .dark-mode #summary td {
-      color: #ddd;
-    }
-    .dark-mode #legend h4, .dark-mode #legend .legend-item span {
-      color: #ddd;
-    }
-    .dark-mode #layer-switch .google-label, .dark-mode #layer-switch .osm-label {
-      color: #ddd;
-    }
-    .dark-mode #time-slider-container #time-display {
-      color: #ddd;
-    }
-    .dark-mode #measure-result {
-      color: #ddd;
-    }
-    .dark-mode #layer-treeview h4, .dark-mode #layer-treeview p {
-      color: #ddd;
-    }
-    .dark-mode .layer-folder-header span {
-      color: #ddd;
-    }
+    .dark-mode .topnavbar { background-color: #1e1e1e; }
+    .dark-mode .sidebar { background-color: #1e1e1e; border-right: 1px solid #333; }
+    .dark-mode .btn-dark { background-color: #333; border-color: #444; color: #fff; }
+    .dark-mode #summary { background: #1e1e1e; }
+    .dark-mode #summary th { background-color: #2c2c2c; }
+    .dark-mode #summary td { background-color: #242424; }
+    .dark-mode #legend { background: rgba(0, 0, 0, 0.9); border: 1px solid #333; }
+    .dark-mode #layer-switch { background: rgba(0, 0, 0, 0.9); border: 1px solid #333; }
+    .dark-mode #time-slider-container { background: rgba(0, 0, 0, 0.9); border: 1px solid #333; }
+    .dark-mode .tool-button { background: rgba(0, 0, 0, 0.9); border: 1px solid #333; }
+    .dark-mode #measure-result { background: rgba(0, 0, 0, 0.9); border: 1px solid #333; }
+    .dark-mode #layer-treeview { background: rgba(0, 0, 0, 0.9); border: 1px solid #333; }
+    .dark-mode .ol-tooltip { background: rgba(0, 0, 0, 0.95); border: 1px solid #333; color: #fff; }
+    .dark-mode .ol-tooltip:after { border-top-color: rgba(0, 0, 0, 0.95); }
+    .dark-mode .sidebar-section h3 { color: #ddd; }
+    .dark-mode #summary th, .dark-mode #summary td { color: #ddd; }
+    .dark-mode #legend h4, .dark-mode .legend-item span { color: #ddd; }
+    .dark-mode .form-check-label, .dark-mode #layer-treeview h4 { color: #ddd; }
   </style>
 </head>
 <body>
   <div class="topnavbar">
-    <button class="btn btn-dark me-3" id="toggleSidebar" aria-label="Toggle sidebar">
-      <i class="bi bi-list"></i>
-    </button>
+    <button class="btn btn-dark me-3" id="toggleSidebar" aria-label="Toggle sidebar"><i class="bi bi-list"></i></button>
     <h1>Advanced GPX/KML/KMZ Converter</h1>
-    <button class="btn btn-dark ms-3" id="toggleTheme" aria-label="Toggle theme">
-      <i class="bi bi-moon"></i>
-    </button>
+    <button class="btn btn-dark ms-3" id="toggleTheme" aria-label="Toggle theme"><i class="bi bi-moon"></i></button>
   </div>
   <div class="main-content">
     <div class="sidebar" id="sidebar" role="region" aria-label="Sidebar">
@@ -518,98 +384,63 @@
       <div class="sidebar-section">
         <h3><i class="bi bi-download me-2"></i>Download Options</h3>
         <div class="download-buttons">
-          <button class="btn btn-primary btn-sm w-100 mb-2" id="downloadKml" disabled aria-disabled="true" aria-label="Download edited KML file">
-            <i class="bi bi-file-earmark-arrow-down me-2"></i>Download KML
-          </button>
-          <button class="btn btn-secondary btn-sm w-100 mb-2" id="downloadBatchKml" disabled aria-disabled="true" aria-label="Download batch KML file">
-            <i class="bi bi-files me-2"></i>Download Batch KML
-          </button>
-          <button class="btn btn-danger btn-sm w-100" id="resetButton" aria-label="Reset all loaded data and clear map">
-            <i class="bi bi-trash me-2"></i>Reset All
-          </button>
+          <button class="btn btn-primary btn-sm w-100 mb-2" id="downloadKml" disabled aria-label="Download edited KML"><i class="bi bi-file-earmark-arrow-down me-2"></i>Download KML</button>
+          <button class="btn btn-secondary btn-sm w-100 mb-2" id="downloadBatchKml" disabled aria-label="Download batch KML"><i class="bi bi-files me-2"></i>Download Batch KML</button>
+          <button class="btn btn-danger btn-sm w-100" id="resetButton" aria-label="Reset all data"><i class="bi bi-trash me-2"></i>Reset All</button>
         </div>
       </div>
       <div class="sidebar-section">
-        <h3><i class="bi bi-info-circle me-2"></i>GPX/KML Summary</h3>
-        <div id="summary" aria-live="polite" aria-atomic="true">
+        <h3><i class="bi bi-info-circle me-2"></i>Summary</h3>
+        <div id="summary" aria-live="polite">
           <table class="table table-bordered table-sm">
-            <tbody>
-              <tr><th colspan="2">Load one or more .gpx, .kml, or .kmz files to see details.</th></tr>
-            </tbody>
+            <tbody><tr><th colspan="2">Load a .gpx, .kml, or .kmz file to see details.</th></tr></tbody>
           </table>
         </div>
       </div>
+      <div class="sidebar-section">
+        <h3><i class="bi bi-graph-up me-2"></i>Elevation Profile</h3>
+        <canvas id="elevationChart"></canvas>
+      </div>
     </div>
-    <div class="map-area" role="main" aria-label="Map Area">
-      <div id="map" tabindex="0" role="application" aria-label="Interactive map for editing GPX, KML, and KMZ files"></div>
+    <div class="map-area" role="main" aria-label="Map area">
+      <div id="map" role="application" aria-label="Interactive map"></div>
       <div id="layer-treeview" aria-label="Layer management">
         <h4>Layers</h4>
         <p>No layers loaded</p>
       </div>
-      <div id="legend" aria-label="Map Legend" role="complementary">
+      <div id="legend" aria-label="Map legend" role="complementary">
         <h4>Legend</h4>
-        <div class="legend-item">
-          <svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="green" stroke="white" stroke-width="1"/></svg>
-          <span>Start Point</span>
-        </div>
-        <div class="legend-item">
-          <svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="red" stroke="white" stroke-width="1"/></svg>
-          <span>End Point</span>
-        </div>
-        <div class="legend-item">
-          <svg width="18" height="18"><circle cx="8" cy="8" r="6" fill="yellow" stroke="white" stroke-width="2"/></svg>
-          <span>Stop Point</span>
-        </div>
-        <div class="legend-item">
-          <svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="blue" stroke="white" stroke-width="1"/></svg>
-          <span>Track Point</span>
-        </div>
-        <div class="legend-item">
-          <img src="https://cdn-icons-png.flaticon.com/512/252/252025.png" width="12" height="12" style="object-fit: contain;" alt="Waypoint icon" />
-          <span>Waypoint</span>
-        </div>
-        <div class="legend-item">
-          <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="red" stroke-width="3"/></svg>
-          <span>Track</span>
-        </div>
+        <div class="legend-item"><svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="green" stroke="white" stroke-width="1"/></svg><span>Start Point</span></div>
+        <div class="legend-item"><svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="red" stroke="white" stroke-width="1"/></svg><span>End Point</span></div>
+        <div class="legend-item"><svg width="18" height="18"><circle cx="9" cy="9" r="6" fill="yellow" stroke="white" stroke-width="2"/></svg><span>Stop Point</span></div>
+        <div class="legend-item"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="blue" stroke="white" stroke-width="1"/></svg><span>Track Point</span></div>
+        <div class="legend-item"><img src="https://cdn-icons-png.flaticon.com/512/252/252025.png" width="12" height="12" alt="Waypoint icon" /><span>Waypoint</span></div>
+        <div class="legend-item"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="red" stroke-width="3"/></svg><span>Track</span></div>
       </div>
       <div id="layer-switch" aria-label="Map layer switch">
-        <label for="layer-toggle" class="google-label mb-0">Google Satellite</label>
+        <label for="layer-toggle" class="mb-0">Google Satellite</label>
         <div class="form-check form-switch ms-2">
-          <input class="form-check-input" type="checkbox" id="layer-toggle" aria-label="Toggle OpenStreetMap layer">
-          <label class="form-check-label osm-label" for="layer-toggle">OSM</label>
+          <input class="form-check-input" type="checkbox" id="layer-toggle" aria-label="Toggle OpenStreetMap layer" />
+          <label class="form-check-label" for="layer-toggle">OSM</label>
         </div>
       </div>
-      <div id="time-slider-container" aria-label="Time-based animation control">
-        <input type="range" min="0" max="100" value="0" class="slider" id="time-slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Animation time slider">
-        <div id="time-display" aria-live="polite" aria-atomic="true">00:00:00</div>
-        <div class="d-flex justify-content-center mt-2" role="group" aria-label="Animation play/pause controls">
-          <button id="play-button" class="btn btn-sm btn-success me-2" aria-label="Play track animation"><i class="bi bi-play me-1"></i>Play</button>
-          <button id="pause-button" class="btn btn-sm btn-warning" aria-label="Pause track animation"><i class="bi bi-pause me-1"></i>Pause</button>
+      <div id="time-slider-container" aria-label="Track animation controls">
+        <input type="range" min="0" max="100" value="0" id="time-slider" aria-label="Animation time slider" />
+        <div id="time-display" aria-live="polite">00:00:00</div>
+        <div class="d-flex justify-content-center mt-2">
+          <button id="play-button" class="btn btn-sm btn-success me-2" aria-label="Play animation"><i class="bi bi-play"></i>Play</button>
+          <button id="pause-button" class="btn btn-sm btn-warning" aria-label="Pause animation"><i class="bi bi-pause"></i>Pause</button>
         </div>
       </div>
-      <div id="measure-tool" class="tool-button" title="Measure Distance" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle measure distance tool">
-        <i class="bi bi-rulers"></i> 
-      </div>
-      <div id="area-tool" class="tool-button" title="Measure Area" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle measure area tool">
-        <i class="bi bi-square"></i> 
-      </div>
-      <div id="edit-tool" class="tool-button" title="Edit Features" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle edit mode">
-        <i class="bi bi-pencil"></i> 
-      </div>
-      <div id="waypoint-tool" class="tool-button" title="Add Point" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle add waypoint tool">
-        <i class="bi bi-flag-fill"></i> 
-      </div>
-      <div id="print-tool" class="tool-button" title="Print Map" role="button" tabindex="0" aria-label="Print map">
-        <i class="bi bi-printer"></i> 
-      </div>
-      <div id="share-tool" class="tool-button" title="Share View" role="button" tabindex="0" aria-label="Generate shareable link">
-        <i class="bi bi-share"></i> 
-      </div>
-      <div id="measure-result" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div id="measure-tool" class="tool-button" role="button" tabindex="0" aria-pressed="false" aria-label="Measure distance"><i class="bi bi-rulers"></i></div>
+      <div id="area-tool" class="tool-button" role="button" tabindex="0" aria-pressed="false" aria-label="Measure area"><i class="bi bi-square"></i></div>
+      <div id="edit-tool" class="tool-button" role="button" tabindex="0" aria-pressed="false" aria-label="Edit features"><i class="bi bi-pencil"></i></div>
+      <div id="waypoint-tool" class="tool-button" role="button" tabindex="0" aria-pressed="false" aria-label="Add waypoint"><i class="bi bi-flag-fill"></i></div>
+      <div id="print-tool" class="tool-button" role="button" tabindex="0" aria-label="Print map"><i class="bi bi-printer"></i></div>
+      <div id="share-tool" class="tool-button" role="button" tabindex="0" aria-label="Share view"><i class="bi bi-share"></i></div>
+      <div id="measure-result" role="status" aria-live="polite"></div>
     </div>
   </div>
-  <!-- Share Modal -->
   <div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -618,1859 +449,1304 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <input type="text" id="shareLink" class="form-control" readonly>
-          <button class="btn btn-primary mt-2" id="copyLink">Copy</button>
+          <input type="text" id="shareLink" class="form-control" readonly aria-label="Shareable link" />
+          <button class="btn btn-primary mt-2" id="copyLink" aria-label="Copy shareable link">Copy</button>
         </div>
       </div>
     </div>
   </div>
-  <!-- OpenLayers and dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/ol@7.5.2/dist/ol.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      let map;
-      let allFeatures = []; // Array of {name, features, source, layer, totalDistance, elevations, startTime, endTime, speeds, visible, fileType}
-      let osmLayer, googleSatelliteLayer;
-      let measureToolActive = false;
-      let areaToolActive = false;
-      let waypointToolActive = false;
-      let editMode = false;
-      let measureTool;
-      let areaTool;
-      let animationInterval;
-      let currentTrackPoints = [];
-      let animationMarker;
-      let waypointSource;
-      let waypointLayer;
-      let modifyWaypointInteraction;
-      let vectorSource;
-      
-      // Tooltip variables
-      const tooltip = document.createElement('div');
-      tooltip.className = 'ol-tooltip';
-      document.body.appendChild(tooltip);
-      let hoverTimeout;
-      let currentFeature = null;
-      let lastTooltipPosition = null;
+    let map, osmLayer, googleSatelliteLayer, vectorSource, waypointSource, waypointLayer, animationSource, animationLayer, animationMarker;
+    let measureTool, areaTool, modifyWaypointInteraction;
+    let allFeatures = [];
+    let measureToolActive = false, areaToolActive = false, waypointToolActive = false, editMode = false;
+    let animationInterval, currentTrackPoints = [];
+    let elevationChart;
+    const tooltip = document.createElement('div');
+    tooltip.className = 'ol-tooltip';
+    document.body.appendChild(tooltip);
+    let currentFeature = null, lastTooltipPosition = null, hoverTimeout;
 
+    document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
-
       initMap();
       setupEventListeners();
+      if (params.get('theme') === '1') document.body.classList.add('dark-mode');
+    });
 
-      // Apply theme from params
-      if (params.has('theme') && params.get('theme') === '1') {
-        document.body.classList.add('dark-mode');
+    function initMap() {
+      osmLayer = new ol.layer.Tile({ source: new ol.source.OSM(), visible: false });
+      googleSatelliteLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({ url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}' }),
+        visible: true
+      });
+      vectorSource = new ol.source.Vector();
+      const vectorLayer = new ol.layer.Vector({ source: vectorSource, style: styleFunction, zIndex: 1000 });
+      animationSource = new ol.source.Vector();
+      animationLayer = new ol.layer.Vector({
+        source: animationSource,
+        zIndex: 1100,
+        style: new ol.style.Style({
+          image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: 'purple' }), stroke: new ol.style.Stroke({ color: 'white', width: 2 }) })
+        })
+      });
+      animationMarker = new ol.Feature({ geometry: new ol.geom.Point([0, 0]) });
+      animationSource.addFeature(animationMarker);
+      waypointSource = new ol.source.Vector();
+      waypointLayer = new ol.layer.Vector({ source: waypointSource, zIndex: 1050, style: styleFunction });
+
+      map = new ol.Map({
+        target: 'map',
+        layers: [googleSatelliteLayer, osmLayer, vectorLayer, waypointLayer, animationLayer],
+        view: new ol.View({ center: ol.proj.fromLonLat([80.3, 19.8]), zoom: 4 }),
+        controls: [new ol.control.Zoom()]
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('center') && params.has('zoom')) {
+        const [lon, lat] = params.get('center').split(',').map(Number);
+        map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+        map.getView().setZoom(Number(params.get('zoom')));
+      }
+      if (params.has('base')) {
+        const isOsm = params.get('base') === '1';
+        osmLayer.setVisible(isOsm);
+        googleSatelliteLayer.setVisible(!isOsm);
+        document.getElementById('layer-toggle').checked = isOsm;
       }
 
-      class PseudoFeature {
-        constructor(geom, props) {
-          this.geom = geom;
-          this.props = props;
-        }
-        getGeometry() {
-          return this.geom;
-        }
-        get(key) {
-          return this.props[key];
-        }
-      }
+      document.getElementById('layer-toggle').addEventListener('change', (e) => {
+        osmLayer.setVisible(e.target.checked);
+        googleSatelliteLayer.setVisible(!e.target.checked);
+      });
 
-      function initMap() {
-        osmLayer = new ol.layer.Tile({
-          source: new ol.source.OSM(),
-          visible: false
-        });
-
-        googleSatelliteLayer = new ol.layer.Tile({
-          source: new ol.source.XYZ({
-            url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-          }),
-          visible: true
-        });
-
-        vectorSource = new ol.source.Vector();
-        const vectorLayer = new ol.layer.Vector({
-          source: vectorSource,
-          style: styleFunction,
-          zIndex: 1000
-        });
-
-        // Animation marker setup
-        const animationSource = new ol.source.Vector();
-        const animationLayer = new ol.layer.Vector({
-          source: animationSource,
-          zIndex: 1100,
-          style: new ol.style.Style({
-            image: new ol.style.Circle({
-              radius: 8,
-              fill: new ol.style.Fill({ color: 'purple' }),
-              stroke: new ol.style.Stroke({ color: 'white', width: 2 })
-            })
-          })
-        });
-        animationMarker = new ol.Feature({
-          geometry: new ol.geom.Point([0, 0])
-        });
-        animationSource.addFeature(animationMarker);
-
-        // Waypoint Layer
-        waypointSource = new ol.source.Vector();
-        waypointLayer = new ol.layer.Vector({
-          source: waypointSource,
-          zIndex: 1050,
-          style: styleFunction
-        });
-
-        map = new ol.Map({
-          target: "map",
-          layers: [
-            googleSatelliteLayer,
-            osmLayer,
-            vectorLayer,
-            waypointLayer,
-            animationLayer
-          ],
-          view: new ol.View({
-            center: ol.proj.fromLonLat([80.3, 19.8]),
-            zoom: 4
-          }),
-          controls: [
-            new ol.control.Zoom()
-          ]
-        });
-
-        // Apply params to view
-        if (params.has('center') && params.has('zoom')) {
-          const [lon, lat] = params.get('center').split(',').map(Number);
-          map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
-          map.getView().setZoom(Number(params.get('zoom')));
-        }
-
-        if (params.has('base')) {
-          const isOsm = params.get('base') === '1';
-          osmLayer.setVisible(isOsm);
-          googleSatelliteLayer.setVisible(!isOsm);
-          document.getElementById("layer-toggle").checked = isOsm;
-        }
-
-        // Layer toggle checkbox
-        document.getElementById("layer-toggle").addEventListener("change", function (e) {
-          osmLayer.setVisible(e.target.checked);
-          googleSatelliteLayer.setVisible(!e.target.checked);
-        });
-
-        // Hover interaction for tooltip
-        map.on('pointermove', function(evt) {
-          if (hoverTimeout) {
-            clearTimeout(hoverTimeout);
-            hoverTimeout = null;
-          }
-          
-          if (measureToolActive || areaToolActive || waypointToolActive) {
-            tooltip.className = 'ol-tooltip';
-            currentFeature = null;
-            return;
-          }
-          
-          const pixel = map.getEventPixel(evt.originalEvent);
-          let hoveredFeature = null;
-          
-          // Check all relevant layers
-          const layers = [
-            waypointLayer,
-            ...allFeatures.filter(f => f.visible).map(f => f.layer)
-          ];
-          
-          map.forEachFeatureAtPixel(
-            pixel,
-            function(feature, layer) {
-              if (layers.includes(layer)) {
-                hoveredFeature = feature;
-                return feature; // Stop searching once a feature is found
-              }
-            },
-            {
-              layerFilter: function(layer) {
-                return layers.includes(layer);
-              },
-              hitTolerance: 10 // Increase hit tolerance for smaller features
-            }
-          );
-          
-          if (hoveredFeature) {
-            currentFeature = hoveredFeature;
-            lastTooltipPosition = evt.coordinate;
-            hoverTimeout = setTimeout(() => showTooltip(evt.coordinate, hoveredFeature), 100);
-          } else {
-            tooltip.className = 'ol-tooltip';
-            currentFeature = null;
-          }
-        });
-        
-        // Hide tooltip when mouse leaves map
-        map.getViewport().addEventListener('mouseout', function() {
+      map.on('pointermove', (evt) => {
+        if (hoverTimeout) clearTimeout(hoverTimeout);
+        if (measureToolActive || areaToolActive || waypointToolActive) {
           tooltip.className = 'ol-tooltip';
           currentFeature = null;
-        });
-        
-        // Update tooltip position when moving over feature
-        map.on('pointermove', function(evt) {
-          if (currentFeature) {
-            lastTooltipPosition = evt.coordinate;
-            updateTooltipPosition(evt.coordinate);
+          return;
+        }
+        const pixel = map.getEventPixel(evt.originalEvent);
+        let hoveredFeature = null;
+        const layers = [waypointLayer, ...allFeatures.filter(f => f.visible).map(f => f.layer)];
+        map.forEachFeatureAtPixel(pixel, (feature, layer) => {
+          if (layers.includes(layer)) {
+            hoveredFeature = feature;
+            return feature;
           }
+        }, { layerFilter: (layer) => layers.includes(layer), hitTolerance: 10 });
+        if (hoveredFeature) {
+          currentFeature = hoveredFeature;
+          lastTooltipPosition = evt.coordinate;
+          hoverTimeout = setTimeout(() => showTooltip(evt.coordinate, hoveredFeature), 100);
+        } else {
+          tooltip.className = 'ol-tooltip';
+          currentFeature = null;
+        }
+      });
+
+      map.getViewport().addEventListener('mouseout', () => {
+        tooltip.className = 'ol-tooltip';
+        currentFeature = null;
+      });
+
+      map.on('pointermove', (evt) => {
+        if (currentFeature) {
+          lastTooltipPosition = evt.coordinate;
+          updateTooltipPosition(evt.coordinate);
+        }
+      });
+
+      modifyWaypointInteraction = new ol.interaction.Modify({ source: waypointSource });
+      map.addInteraction(modifyWaypointInteraction);
+      modifyWaypointInteraction.setActive(false);
+      modifyWaypointInteraction.on('modifyend', (evt) => {
+        evt.features.forEach((feat) => {
+          const [lon, lat] = ol.proj.toLonLat(feat.getGeometry().getCoordinates());
+          feat.set('lat', lat);
+          feat.set('lon', lon);
         });
+        updateSummary();
+        updateElevationChart();
+      });
 
-        // Waypoint modify interaction
-        modifyWaypointInteraction = new ol.interaction.Modify({
-          source: waypointSource,
-          hitDetection: waypointLayer,
-        });
-        map.addInteraction(modifyWaypointInteraction);
-        modifyWaypointInteraction.setActive(false);
-
-        modifyWaypointInteraction.on('modifyend', function(evt) {
-          evt.features.forEach(function(feat) {
-            const [lon, lat] = ol.proj.toLonLat(feat.getGeometry().getCoordinates());
-            feat.set('lat', lat);
-            feat.set('lon', lon);
-          });
-        });
-
-        // Map single click to add waypoint or show tooltip
-        map.on('singleclick', function(evt) {
-          if (waypointToolActive) {
-            let featureFound = false;
-            map.forEachFeatureAtPixel(evt.pixel, function() {
-              featureFound = true;
-            });
-            if (featureFound) return;
-
+      map.on('singleclick', (evt) => {
+        if (waypointToolActive) {
+          let featureFound = false;
+          map.forEachFeatureAtPixel(evt.pixel, () => { featureFound = true; });
+          if (!featureFound) {
             const coords = ol.proj.toLonLat(evt.coordinate);
             const name = prompt('Waypoint name? (optional)', '') || '';
             addWaypoint(coords[1], coords[0], name);
+          }
+        } else {
+          const pixel = map.getEventPixel(evt.originalEvent);
+          let clickedFeature = null;
+          const layers = [waypointLayer, ...allFeatures.filter(f => f.visible).map(f => f.layer)];
+          map.forEachFeatureAtPixel(pixel, (feature, layer) => {
+            if (layers.includes(layer)) {
+              clickedFeature = feature;
+              return feature;
+            }
+          }, { layerFilter: (layer) => layers.includes(layer), hitTolerance: 10 });
+          if (clickedFeature) {
+            showTooltip(evt.coordinate, clickedFeature);
           } else {
-            const pixel = map.getEventPixel(evt.originalEvent);
-            let clickedFeature = null;
-            
-            const layers = [
-              waypointLayer,
-              ...allFeatures.filter(f => f.visible).map(f => f.layer)
-            ];
-            
-            map.forEachFeatureAtPixel(
-              pixel,
-              function(feature, layer) {
-                if (layers.includes(layer)) {
-                  clickedFeature = feature;
-                  return feature;
-                }
-              },
-              {
-                layerFilter: function(layer) {
-                  return layers.includes(layer);
-                },
-                hitTolerance: 10
-              }
-            );
-            
-            if (clickedFeature) {
-              showTooltip(evt.coordinate, clickedFeature);
-            } else {
-              tooltip.className = 'ol-tooltip';
-              currentFeature = null;
-            }
-          }
-        });
-
-        // Measure tool setup
-        measureTool = new ol.interaction.Draw({
-          source: vectorSource,
-          type: 'LineString',
-          style: new ol.style.Style({
-            stroke: new ol.style.Stroke({
-              color: 'rgba(0, 0, 255, 0.7)',
-              width: 2
-            })
-          })
-        });
-        measureTool.setActive(false);
-        map.addInteraction(measureTool);
-
-        measureTool.on('drawend', function(evt) {
-          const line = evt.feature.getGeometry();
-          const coordinates = line.getCoordinates();
-          let totalDistance = 0;
-
-          for (let i = 1; i < coordinates.length; i++) {
-            const from = ol.proj.toLonLat(coordinates[i-1]);
-            const to = ol.proj.toLonLat(coordinates[i]);
-            totalDistance += haversine(from[1], from[0], to[1], to[0]);
-          }
-
-          document.getElementById('measure-result').innerHTML = `Distance: ${(totalDistance/1000).toFixed(2)} km`;
-          document.getElementById('measure-result').style.display = 'block';
-
-          setTimeout(() => {
-            vectorSource.removeFeature(evt.feature);
-            document.getElementById('measure-result').style.display = 'none';
-          }, 5000);
-        });
-
-        // Area tool setup
-        areaTool = new ol.interaction.Draw({
-          source: vectorSource,
-          type: 'Polygon',
-          style: new ol.style.Style({
-            stroke: new ol.style.Stroke({
-              color: 'rgba(0, 0, 255, 0.7)',
-              width: 2
-            }),
-            fill: new ol.style.Fill({
-              color: 'rgba(0, 0, 255, 0.2)'
-            })
-          })
-        });
-        areaTool.setActive(false);
-        map.addInteraction(areaTool);
-
-        areaTool.on('drawend', function(evt) {
-          const geometry = evt.feature.getGeometry();
-          const area = ol.sphere.getArea(geometry, {projection: map.getView().getProjection()});
-          document.getElementById('measure-result').innerHTML = `Area: ${(area / 1000000).toFixed(2)} km²`;
-          document.getElementById('measure-result').style.display = 'block';
-
-          setTimeout(() => {
-            vectorSource.removeFeature(evt.feature);
-            document.getElementById('measure-result').style.display = 'none';
-          }, 5000);
-        });
-      }
-      
-      function showTooltip(coordinate, feature) {
-        if (!feature) return;
-        
-        const props = feature.getProperties();
-        const geomType = feature.getGeometry().getType();
-        
-        let tooltipHtml = '';
-        const [lon, lat] = ol.proj.toLonLat(coordinate);
-        
-        if (geomType === "Point") {
-            const type = props.type || 'unknown';
-            tooltipHtml = `<table>
-                <tr><th>${type.charAt(0).toUpperCase() + type.slice(1)}</th><td></td></tr>
-                ${props.name ? `<tr><th>Name:</th><td>${props.name}</td></tr>` : ''}
-                <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || "N/A"}</td></tr>
-                <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || "N/A"}</td></tr>`;
-            
-            if (props.elevation !== undefined) {
-                tooltipHtml += `<tr><th>Elevation:</th><td>${props.elevation?.toFixed(2) || "N/A"} m</td></tr>`;
-            }
-            
-            if (props.istTime) {
-                tooltipHtml += `<tr><th>Time (IST):</th><td>${props.istTime || "N/A"}</td></tr>`;
-            }
-            
-            if (props.haltDuration) {
-                tooltipHtml += `<tr><th>Halt Duration:</th><td>${props.haltDuration}</td></tr>`;
-            } else if (props.speed !== undefined) {
-                tooltipHtml += `<tr><th>Speed:</th><td>${props.speed?.toFixed(2) || "N/A"} km/h</td></tr>`;
-            }
-            
-            if (props.description) {
-                tooltipHtml += `<tr><th>Description:</th><td>${props.description}</td></tr>`;
-            }
-            
-            tooltipHtml += `</table>`;
-            
-            if (props.type === "waypoint") {
-                const idx = waypointSource.getFeatures().indexOf(feature);
-                if (idx !== -1) {
-                    tooltipHtml += `<button class="btn btn-danger btn-sm delete-btn" onclick="deleteWaypointById(${idx})">Delete Waypoint</button>`;
-                }
-            }
-        } else if (geomType === "MultiPoint") {
-            const coords = feature.getGeometry().getCoordinates();
-            let minDist = Infinity;
-            let closestIndex = -1;
-            const mouseCoord = coordinate;
-            for (let i = 0; i < coords.length; i++) {
-                const dx = coords[i][0] - mouseCoord[0];
-                const dy = coords[i][1] - mouseCoord[1];
-                const dist = dx * dx + dy * dy;
-                if (dist < minDist) {
-                    minDist = dist;
-                    closestIndex = i;
-                }
-            }
-            if (closestIndex !== -1) {
-                const pointData = props.pointsData[closestIndex];
-                tooltipHtml = `<table>
-                    <tr><th>Track Point</th><td></td></tr>
-                    ${pointData.name ? `<tr><th>Name:</th><td>${pointData.name}</td></tr>` : ''}
-                    <tr><th>Lat:</th><td>${pointData.lat.toFixed(5)}</td></tr>
-                    <tr><th>Lon:</th><td>${pointData.lon.toFixed(5)}</td></tr>
-                    ${pointData.elevation !== undefined ? `<tr><th>Elevation:</th><td>${pointData.elevation?.toFixed(2) || "N/A"} m</td></tr>` : ''}
-                    ${pointData.istTime ? `<tr><th>Time (IST):</th><td>${pointData.istTime || "N/A"}</td></tr>` : ''}
-                    ${pointData.speed !== undefined ? `<tr><th>Speed:</th><td>${pointData.speed?.toFixed(2) || "N/A"} km/h</td></tr>` : ''}
-                    ${pointData.description ? `<tr><th>Description:</th><td>${pointData.description}</td></tr>` : ''}
-                </table>`;
-            }
-        } else if (geomType === "LineString") {
-            const coords = feature.getGeometry().getCoordinates();
-            const start = ol.proj.toLonLat(coords[0]);
-            const end = ol.proj.toLonLat(coords[coords.length - 1]);
-            
-            tooltipHtml = `<table>
-                <tr><th>Track Line</th><td></td></tr>
-                ${props.name ? `<tr><th>Name:</th><td>${props.name}</td></tr>` : ''}
-                <tr><th>Start:</th><td>${start[1].toFixed(5)}, ${start[0].toFixed(5)}</td></tr>
-                <tr><th>End:</th><td>${end[1].toFixed(5)}, ${end[0].toFixed(5)}</td></tr>
-                ${props.description ? `<tr><th>Description:</th><td>${props.description}</td></tr>` : ''}
-            </table>`;
-        }
-        
-        tooltip.innerHTML = tooltipHtml;
-        updateTooltipPosition(coordinate);
-        tooltip.className = 'ol-tooltip visible';
-      }
-      
-      function updateTooltipPosition(coordinate) {
-        if (!coordinate) return;
-        const pixel = map.getPixelFromCoordinate(coordinate);
-        tooltip.style.left = pixel[0] + 'px';
-        tooltip.style.top = (pixel[1] - 10) + 'px';
-      }
-
-      function addWaypoint(lat, lon, name = "") {
-        const feature = new ol.Feature({
-          geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
-          type: "waypoint",
-          lat, lon,
-          name: name || ""
-        });
-        waypointSource.addFeature(feature);
-      }
-
-      window.deleteWaypointById = function(index) {
-        const feat = waypointSource.getFeatures()[index];
-        if (feat) {
-          waypointSource.removeFeature(feat);
-          tooltip.className = 'ol-tooltip';
-          currentFeature = null;
-        }
-      }
-
-      function setupEventListeners() {
-        document.getElementById("toggleSidebar").addEventListener("click", function() {
-          document.getElementById("sidebar").classList.toggle("collapsed");
-          setTimeout(() => {
-            map.updateSize();
-          }, 300);
-        });
-
-        document.getElementById("toggleTheme").addEventListener("click", function() {
-          document.body.classList.toggle("dark-mode");
-          const icon = this.querySelector('i');
-          icon.classList.toggle('bi-moon');
-          icon.classList.toggle('bi-sun');
-        });
-
-        window.addEventListener('resize', () => {
-          setTimeout(() => {
-            map.updateSize();
-            if (currentFeature && lastTooltipPosition) {
-              updateTooltipPosition(lastTooltipPosition);
-            }
-          }, 300);
-        });
-
-        document.getElementById("inputfile").addEventListener("change", async function (event) {
-          const files = event.target.files;
-          if (!files.length) return;
-
-          allFeatures = [];
-          waypointSource.clear();
-          updateLayerTreeview();
-
-          const promises = [];
-          for (const file of files) {
-            const promise = new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = async function (e) {
-                try {
-                  let data;
-                  const fileName = file.name.toLowerCase();
-                  let fileType = fileName.endsWith('.gpx') ? 'gpx' : 'kml/kmz';
-
-                  if (fileName.endsWith('.gpx')) {
-                    data = parseGPX(e.target.result, file.name);
-                  } else if (fileName.endsWith('.kml')) {
-                    data = parseKML(e.target.result, file.name);
-                  } else if (fileName.endsWith('.kmz')) {
-                    const zip = await JSZip.loadAsync(file);
-                    const kmlFile = Object.keys(zip.files).find(name => name.endsWith('.kml'));
-                    if (!kmlFile) throw new Error('No KML file found in KMZ');
-                    const kmlContent = await zip.file(kmlFile).async('string');
-                    data = parseKML(kmlContent, file.name);
-                  } else {
-                    throw new Error('Unsupported file type');
-                  }
-
-                  // Create a new vector source and layer for this file
-                  const fileSource = new ol.source.Vector();
-                  const fileLayer = new ol.layer.Vector({
-                    source: fileSource,
-                    zIndex: 1040,
-                    style: styleFunction
-                  });
-                  map.addLayer(fileLayer);
-
-                  // Add modify interaction for this layer
-                  const modifyInteraction = new ol.interaction.Modify({
-                    source: fileSource,
-                    deleteCondition: function(event) {
-                      return ol.events.condition.shiftKeyOnly(event) && ol.events.condition.singleClick(event);
-                    }
-                  });
-                  map.addInteraction(modifyInteraction);
-                  modifyInteraction.setActive(editMode);
-
-                  modifyInteraction.on('modifyend', function(evt) {
-                    const source = evt.target.get('source');
-                    evt.features.forEach(function(feat) {
-                      if (feat.get('type') === 'multi_trackpoints') {
-                        const coords = feat.getGeometry().getCoordinates();
-                        const pointsData = feat.get('pointsData');
-                        for (let i = 0; i < coords.length; i++) {
-                          const [lon, lat] = ol.proj.toLonLat(coords[i]);
-                          pointsData[i].lon = lon;
-                          pointsData[i].lat = lat;
-                        }
-                      } else if (feat.getGeometry().getType() === 'Point') {
-                        const [lon, lat] = ol.proj.toLonLat(feat.getGeometry().getCoordinates());
-                        feat.set('lon', lon);
-                        feat.set('lat', lat);
-                      }
-                    });
-
-                    // Rebuild line and update distances/speeds
-                    let trackCoords = [];
-                    const feats = source.getFeatures();
-                    const startFeat = feats.find(f => f.get('type') === 'start');
-                    if (startFeat) trackCoords.push(startFeat.getGeometry().getCoordinates());
-                    const multiFeat = feats.find(f => f.get('type') === 'multi_trackpoints');
-                    if (multiFeat) trackCoords = trackCoords.concat(multiFeat.getGeometry().getCoordinates());
-                    const endFeat = feats.find(f => f.get('type') === 'end');
-                    if (endFeat) trackCoords.push(endFeat.getGeometry().getCoordinates());
-
-                    const lineFeat = feats.find(f => f.get('type') === 'track');
-                    if (lineFeat) {
-                      lineFeat.getGeometry().setCoordinates(trackCoords);
-                    }
-
-                    // Update totalDistance and speeds
-                    const fileData = allFeatures.find(fd => fd.source === source);
-                    if (fileData) {
-                      // Calculate totalDistance
-                      fileData.totalDistance = 0;
-                      for (let i = 1; i < trackCoords.length; i++) {
-                        const from = ol.proj.toLonLat(trackCoords[i - 1]);
-                        const to = ol.proj.toLonLat(trackCoords[i]);
-                        fileData.totalDistance += haversine(from[1], from[0], to[1], to[0]);
-                      }
-
-                      // Collect times
-                      let times = [];
-                      if (startFeat) times.push(startFeat.get('time'));
-                      if (multiFeat) times = times.concat(multiFeat.get('pointsData').map(pd => pd.time));
-                      if (endFeat) times.push(endFeat.get('time'));
-
-                      // Calculate speeds
-                      let speeds = new Array(times.length).fill(0);
-                      for (let i = 1; i < times.length; i++) {
-                        if (times[i] && times[i - 1]) {
-                          const dist = haversine(
-                            ol.proj.toLonLat(trackCoords[i - 1])[1],
-                            ol.proj.toLonLat(trackCoords[i - 1])[0],
-                            ol.proj.toLonLat(trackCoords[i])[1],
-                            ol.proj.toLonLat(trackCoords[i])[0]
-                          );
-                          const timeDiff = (new Date(times[i]) - new Date(times[i - 1])) / 1000;
-                          if (timeDiff > 0) speeds[i] = (dist / timeDiff) * 3.6;
-                        }
-                      }
-                      fileData.speeds = speeds;
-
-                      // Update point speeds
-                      if (startFeat) startFeat.set('speed', speeds[0]);
-                      if (multiFeat) {
-                        const pointsData = multiFeat.get('pointsData');
-                        for (let j = 0; j < pointsData.length; j++) {
-                          pointsData[j].speed = speeds[1 + j];
-                        }
-                      }
-                      if (endFeat) endFeat.set('speed', speeds[speeds.length - 1]);
-
-                      updateSummary();
-                    }
-                  });
-
-                  // Add features to source
-                  fileSource.addFeatures(data.features);
-
-                  data.source = fileSource;
-                  data.layer = fileLayer;
-                  data.visible = true;
-                  data.fileType = fileType;
-                  allFeatures.push(data);
-
-                  updateLayerTreeview();
-                  updateSummary();
-
-                  if (data.features.some(f => f.get('type') === 'trackpoint' || f.get('type') === 'multi_trackpoints')) {
-                    setupTimeSlider();
-                  }
-
-                  resolve();
-                } catch (err) {
-                  alert(`Error parsing file "${file.name}": ${err.message}`);
-                  reject(err);
-                }
-              };
-              reader.onerror = function () {
-                alert(`Error reading file "${file.name}"`);
-                reject();
-              };
-              if (file.name.toLowerCase().endsWith('.kmz')) {
-                reader.readAsArrayBuffer(file);
-              } else {
-                reader.readAsText(file);
-              }
-            });
-            promises.push(promise);
-          }
-
-          await Promise.all(promises);
-
-          const extent = ol.extent.createEmpty();
-          allFeatures
-            .filter(f => f.visible)
-            .forEach(f => f.source.getFeatures().forEach(feat => ol.extent.extend(extent, feat.getGeometry().getExtent())));
-          if (!ol.extent.isEmpty(extent)) {
-            map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
-          }
-
-          document.getElementById("downloadKml").disabled = allFeatures.filter(f => f.visible).length === 0;
-          document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
-
-          // Apply visible from params if matching length
-          if (params.has('vis')) {
-            const visArr = params.get('vis').split(',').map(v => v === '1');
-            if (visArr.length === allFeatures.length) {
-              allFeatures.forEach((f, i) => {
-                f.visible = visArr[i];
-                f.layer.setVisible(f.visible);
-              });
-              updateLayerTreeview();
-              updateSummary();
-              adjustMapView();
-            }
-          }
-        });
-
-        document.getElementById("resetButton").addEventListener("click", function () {
-          resetMap();
-        });
-
-        document.getElementById("measure-tool").addEventListener("click", function() {
-          measureToolActive = !measureToolActive;
-          measureTool.setActive(measureToolActive);
-          this.style.backgroundColor = measureToolActive ? '#d4edda' : '';
-          this.setAttribute('aria-pressed', measureToolActive);
-          if (measureToolActive) {
-            areaToolActive = false;
-            waypointToolActive = false;
-            editMode = false;
-            areaTool.setActive(false);
-            document.getElementById("area-tool").style.backgroundColor = '';
-            document.getElementById("area-tool").setAttribute('aria-pressed', false);
-            document.getElementById("waypoint-tool").style.backgroundColor = '';
-            document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
-            document.getElementById("edit-tool").style.backgroundColor = '';
-            document.getElementById("edit-tool").setAttribute('aria-pressed', false);
-            map.getInteractions().forEach(i => {
-              if (i instanceof ol.interaction.Modify) {
-                i.setActive(false);
-              }
-            });
-          }
-          tooltip.className = 'ol-tooltip';
-        });
-
-        document.getElementById("area-tool").addEventListener("click", function() {
-          areaToolActive = !areaToolActive;
-          areaTool.setActive(areaToolActive);
-          this.style.backgroundColor = areaToolActive ? '#d4edda' : '';
-          this.setAttribute('aria-pressed', areaToolActive);
-          if (areaToolActive) {
-            measureToolActive = false;
-            waypointToolActive = false;
-            editMode = false;
-            measureTool.setActive(false);
-            document.getElementById("measure-tool").style.backgroundColor = '';
-            document.getElementById("measure-tool").setAttribute('aria-pressed', false);
-            document.getElementById("waypoint-tool").style.backgroundColor = '';
-            document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
-            document.getElementById("edit-tool").style.backgroundColor = '';
-            document.getElementById("edit-tool").setAttribute('aria-pressed', false);
-            map.getInteractions().forEach(i => {
-              if (i instanceof ol.interaction.Modify) {
-                i.setActive(false);
-              }
-            });
-          }
-          tooltip.className = 'ol-tooltip';
-        });
-
-        document.getElementById("edit-tool").addEventListener("click", function() {
-          editMode = !editMode;
-          this.style.backgroundColor = editMode ? '#d4edda' : '';
-          this.setAttribute('aria-pressed', editMode);
-          map.getInteractions().forEach(i => {
-            if (i instanceof ol.interaction.Modify) {
-              i.setActive(editMode);
-            }
-          });
-          if (editMode) {
-            measureToolActive = false;
-            areaToolActive = false;
-            waypointToolActive = false;
-            measureTool.setActive(false);
-            areaTool.setActive(false);
-            document.getElementById("measure-tool").style.backgroundColor = '';
-            document.getElementById("measure-tool").setAttribute('aria-pressed', false);
-            document.getElementById("area-tool").style.backgroundColor = '';
-            document.getElementById("area-tool").setAttribute('aria-pressed', false);
-            document.getElementById("waypoint-tool").style.backgroundColor = '';
-            document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
-          }
-          tooltip.className = 'ol-tooltip';
-        });
-
-        document.getElementById("waypoint-tool").addEventListener("click", function() {
-          waypointToolActive = !waypointToolActive;
-          this.style.backgroundColor = waypointToolActive ? '#d4edda' : '';
-          this.setAttribute('aria-pressed', waypointToolActive);
-          if (waypointToolActive) {
-            measureToolActive = false;
-            areaToolActive = false;
-            editMode = false;
-            measureTool.setActive(false);
-            areaTool.setActive(false);
-            document.getElementById("measure-tool").style.backgroundColor = '';
-            document.getElementById("measure-tool").setAttribute('aria-pressed', false);
-            document.getElementById("area-tool").style.backgroundColor = '';
-            document.getElementById("area-tool").setAttribute('aria-pressed', false);
-            document.getElementById("edit-tool").style.backgroundColor = '';
-            document.getElementById("edit-tool").setAttribute('aria-pressed', false);
-            map.getInteractions().forEach(i => {
-              if (i instanceof ol.interaction.Modify) {
-                i.setActive(false);
-              }
-            });
-          }
-          tooltip.className = 'ol-tooltip';
-        });
-
-        document.getElementById("print-tool").addEventListener("click", function() {
-          map.once('rendercomplete', async function() {
-            const mapCanvas = map.getViewport().querySelector('canvas');
-            if (!mapCanvas) return;
-            const pdf = new jspdf.jsPDF('landscape', 'pt', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const size = map.getSize();
-            const widthRatio = pdfWidth / size[0];
-            const heightRatio = pdfHeight / size[1];
-            const ratio = Math.min(widthRatio, heightRatio);
-            const w = size[0] * ratio;
-            const h = size[1] * ratio;
-            pdf.addImage(mapCanvas.toDataURL('image/png'), 'PNG', 0, 0, w, h);
-            pdf.save('map.pdf');
-          });
-          map.renderSync();
-        });
-
-        document.getElementById("share-tool").addEventListener("click", function() {
-          const view = map.getView();
-          const center = ol.proj.toLonLat(view.getCenter());
-          const zoom = view.getZoom();
-          const base = document.getElementById('layer-toggle').checked ? 1 : 0;
-          const theme = document.body.classList.contains('dark-mode') ? 1 : 0;
-          const vis = allFeatures.map(f => f.visible ? 1 : 0).join(',');
-          const shareParams = new URLSearchParams({
-            center: `${center[0].toFixed(4)},${center[1].toFixed(4)}`,
-            zoom: zoom.toFixed(2),
-            base,
-            theme,
-            vis
-          });
-          const shareLink = `${window.location.origin}${window.location.pathname}?${shareParams.toString()}`;
-          document.getElementById('shareLink').value = shareLink;
-          const modal = new bootstrap.Modal(document.getElementById('shareModal'));
-          modal.show();
-        });
-
-        document.getElementById('copyLink').addEventListener('click', function() {
-          navigator.clipboard.writeText(document.getElementById('shareLink').value).then(() => {
-            alert('Link copied to clipboard!');
-          });
-        });
-
-        document.getElementById('play-button').addEventListener('click', startAnimation);
-        document.getElementById('pause-button').addEventListener('click', pauseAnimation);
-        document.getElementById('time-slider').addEventListener('input', function() {
-          if (animationInterval) pauseAnimation();
-          updateAnimationPosition(this.value);
-        });
-
-        document.getElementById("downloadKml").onclick = () => {
-          const features = [
-            ...allFeatures
-              .filter(f => f.visible)
-              .flatMap(f => f.source.getFeatures()),
-            ...waypointSource.getFeatures()
-          ];
-          const kml = generateKML({ features, name: "Edited Data" });
-          downloadKML(kml, "edited_data.kml");
-        };
-
-        document.getElementById("downloadBatchKml").onclick = async () => {
-          const batchKml = allFeatures
-            .map((data, index) => generateKML({ features: data.source.getFeatures(), name: data.name || `File_${index + 1}` }))
-            .join("\n");
-          const batchKmlWrapper = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-${batchKml.replace(/<\?xml[^>]*>\n<kml[^>]*>\n\s*<Document>\n|\n\s*<\/Document>\n\s*<\/kml>/g, "")}
-${waypointSource.getFeatures().length > 0 ? generateKML({ features: waypointSource.getFeatures(), name: "User Waypoints" }).replace(/<\?xml[^>]*>\n<kml[^>]*>\n\s*<Document>\n|\n\s*<\/Document>\n\s*<\/kml>/g, "") : ""}
-  </Document>
-</kml>`;
-          await downloadKML(batchKmlWrapper, "batch_files.kml");
-        };
-      }
-
-      function updateLayerTreeview() {
-        const treeview = document.getElementById("layer-treeview");
-        treeview.innerHTML = `
-          <h4>Layers</h4>
-          ${allFeatures.length === 0 ? "<p>No layers loaded</p>" : ""}
-        `;
-
-        const gpxFiles = allFeatures.filter(f => f.fileType === 'gpx');
-        const kmlFiles = allFeatures.filter(f => f.fileType === 'kml/kmz');
-
-        // GPX Data Folder
-        if (gpxFiles.length > 0) {
-          const folderId = 'gpx-folder';
-          const div = document.createElement("div");
-          div.className = "layer-folder";
-          div.innerHTML = `
-            <div class="layer-folder-header" data-bs-toggle="collapse" data-bs-target="#${folderId}" aria-expanded="true">
-              <span>GPX Data (${gpxFiles.length})</span>
-              <i class="bi bi-chevron-down"></i>
-            </div>
-            <div id="${folderId}" class="layer-folder-content collapse show">
-              ${gpxFiles.map((fileData, index) => `
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="layer-gpx-${index}" ${fileData.visible ? 'checked' : ''} aria-label="Toggle visibility of layer ${fileData.name}">
-                  <label class="form-check-label" for="layer-gpx-${index}">${fileData.name}</label>
-                  <span class="delete-layer" data-type="gpx" data-index="${index}"><i class="bi bi-trash"></i></span>
-                </div>
-              `).join('')}
-            </div>
-          `;
-          treeview.appendChild(div);
-
-          gpxFiles.forEach((fileData, index) => {
-            const checkbox = div.querySelector(`#layer-gpx-${index}`);
-            checkbox.addEventListener("change", function(e) {
-              fileData.visible = e.target.checked;
-              fileData.layer.setVisible(fileData.visible);
-              updateSummary();
-              setupTimeSlider();
-              document.getElementById("downloadKml").disabled = allFeatures.filter(f => f.visible).length === 0;
-              document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
-              adjustMapView();
-            });
-          });
-        }
-
-        // KML/KMZ Data Folder
-        if (kmlFiles.length > 0) {
-          const folderId = 'kml-folder';
-          const div = document.createElement("div");
-          div.className = "layer-folder";
-          div.innerHTML = `
-            <div class="layer-folder-header" data-bs-toggle="collapse" data-bs-target="#${folderId}" aria-expanded="true">
-              <span>KML/KMZ Data (${kmlFiles.length})</span>
-              <i class="bi bi-chevron-down"></i>
-            </div>
-            <div id="${folderId}" class="layer-folder-content collapse show">
-              ${kmlFiles.map((fileData, index) => `
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="layer-kml-${index}" ${fileData.visible ? 'checked' : ''} aria-label="Toggle visibility of layer ${fileData.name}">
-                  <label class="form-check-label" for="layer-kml-${index}">${fileData.name}</label>
-                  <span class="delete-layer" data-type="kml" data-index="${index}"><i class="bi bi-trash"></i></span>
-                </div>
-              `).join('')}
-            </div>
-          `;
-          treeview.appendChild(div);
-
-          kmlFiles.forEach((fileData, index) => {
-            const checkbox = div.querySelector(`#layer-kml-${index}`);
-            checkbox.addEventListener("change", function(e) {
-              fileData.visible = e.target.checked;
-              fileData.layer.setVisible(fileData.visible);
-              updateSummary();
-              setupTimeSlider();
-              document.getElementById("downloadKml").disabled = allFeatures.filter(f => f.visible).length === 0;
-              document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
-              adjustMapView();
-            });
-          });
-        }
-
-        // Add delete listeners
-        document.querySelectorAll('.delete-layer').forEach(el => {
-          el.addEventListener('click', () => {
-            const type = el.dataset.type;
-            const localIdx = parseInt(el.dataset.index);
-            let fileData;
-            let globalIdx;
-            if (type === 'gpx') {
-              fileData = allFeatures.filter(f => f.fileType === 'gpx')[localIdx];
-            } else {
-              fileData = allFeatures.filter(f => f.fileType === 'kml/kmz')[localIdx];
-            }
-            globalIdx = allFeatures.indexOf(fileData);
-            if (globalIdx !== -1) {
-              allFeatures.splice(globalIdx, 1);
-              map.removeLayer(fileData.layer);
-              map.getInteractions().forEach(i => {
-                if (i instanceof ol.interaction.Modify && i.get('source') === fileData.source) {
-                  map.removeInteraction(i);
-                }
-              });
-              updateLayerTreeview();
-              updateSummary();
-              adjustMapView();
-              document.getElementById("downloadKml").disabled = allFeatures.filter(f => f.visible).length === 0;
-              document.getElementById("downloadBatchKml").disabled = allFeatures.length < 2;
-            }
-          });
-        });
-      }
-
-      function adjustMapView() {
-        const extent = ol.extent.createEmpty();
-        allFeatures
-          .filter(f => f.visible)
-          .forEach(f => f.source.getFeatures().forEach(feat => ol.extent.extend(extent, feat.getGeometry().getExtent())));
-        if (!ol.extent.isEmpty(extent)) {
-          map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
-        }
-      }
-
-      function resetMap() {
-        allFeatures.forEach(f => {
-          map.removeLayer(f.layer);
-          map.getInteractions().forEach(i => {
-            if (i instanceof ol.interaction.Modify && i.get('source') === f.source) {
-              map.removeInteraction(i);
-            }
-          });
-        });
-        allFeatures = [];
-        waypointSource.clear();
-        map.removeInteraction(modifyWaypointInteraction);
-        map.removeInteraction(measureTool);
-        map.removeInteraction(areaTool);
-
-        modifyWaypointInteraction = new ol.interaction.Modify({
-          source: waypointSource,
-          hitDetection: waypointLayer
-        });
-        measureTool = new ol.interaction.Draw({
-          source: vectorSource,
-          type: 'LineString',
-          style: new ol.style.Style({
-            stroke: new ol.style.Stroke({
-              color: 'rgba(0, 0, 255, 0.7)',
-              width: 2
-            })
-          })
-        });
-        areaTool = new ol.interaction.Draw({
-          source: vectorSource,
-          type: 'Polygon',
-          style: new ol.style.Style({
-            stroke: new ol.style.Stroke({
-              color: 'rgba(0, 0, 255, 0.7)',
-              width: 2
-            }),
-            fill: new ol.style.Fill({
-              color: 'rgba(0, 0, 255, 0.2)'
-            })
-          })
-        });
-        measureTool.setActive(false);
-        areaTool.setActive(false);
-        map.addInteraction(modifyWaypointInteraction);
-        map.addInteraction(measureTool);
-        map.addInteraction(areaTool);
-
-        updateLayerTreeview();
-        document.getElementById("summary").innerHTML = `<table class="table table-bordered table-sm"><tbody><tr><th colspan="2">Load one or more .gpx, .kml, or .kmz files to see details.</th></tr></tbody></table>`;
-        document.getElementById("downloadKml").disabled = true;
-        document.getElementById("downloadBatchKml").disabled = true;
-        document.getElementById("inputfile").value = "";
-        document.getElementById("legend").style.display = "none";
-        document.getElementById("time-slider-container").style.display = "none";
-
-        map.getView().setCenter(ol.proj.fromLonLat([80.3, 19.8]));
-        map.getView().setZoom(4);
-
-        if (animationInterval) {
-          clearInterval(animationInterval);
-          animationInterval = null;
-        }
-        currentTrackPoints = [];
-        measureToolActive = false;
-        areaToolActive = false;
-        waypointToolActive = false;
-        editMode = false;
-        document.getElementById("measure-tool").style.backgroundColor = '';
-        document.getElementById("measure-tool").setAttribute('aria-pressed', false);
-        document.getElementById("area-tool").style.backgroundColor = '';
-        document.getElementById("area-tool").setAttribute('aria-pressed', false);
-        document.getElementById("edit-tool").style.backgroundColor = '';
-        document.getElementById("edit-tool").setAttribute('aria-pressed', false);
-        document.getElementById("waypoint-tool").style.backgroundColor = '';
-        document.getElementById("waypoint-tool").setAttribute('aria-pressed', false);
-        tooltip.className = 'ol-tooltip';
-      }
-
-      function styleFunction(feature) {
-        const geomType = feature.getGeometry().getType();
-        const props = feature.getProperties();
-
-        if (geomType === "Point" || geomType === "MultiPoint") {
-          if (props.type === "start") {
-            return new ol.style.Style({
-              image: new ol.style.Circle({
-                radius: 8,
-                fill: new ol.style.Fill({ color: "green" }),
-                stroke: new ol.style.Stroke({ color: "white", width: 2 })
-              }),
-              text: props.name ? new ol.style.Text({
-                text: props.name,
-                font: '12px Arial',
-                fill: new ol.style.Fill({ color: '#000' }),
-                stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-                offsetY: -15
-              }) : null
-            });
-          } else if (props.type === "end") {
-            return new ol.style.Style({
-              image: new ol.style.Circle({
-                radius: 8,
-                fill: new ol.style.Fill({ color: "red" }),
-                stroke: new ol.style.Stroke({ color: "white", width: 2 })
-              }),
-              text: props.name ? new ol.style.Text({
-                text: props.name,
-                font: '12px Arial',
-                fill: new ol.style.Fill({ color: '#000' }),
-                stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-                offsetY: -15
-              }) : null
-            });
-          } else if (props.type === "stop") {
-            return new ol.style.Style({
-              image: new ol.style.Circle({
-                radius: 10,
-                fill: new ol.style.Fill({ color: "yellow" }),
-                stroke: new ol.style.Stroke({ color: "white", width: 2 })
-              }),
-              text: props.name ? new ol.style.Text({
-                text: props.name,
-                font: '12px Arial',
-                fill: new ol.style.Fill({ color: '#000' }),
-                stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-                offsetY: -15
-              }) : null
-            });
-          } else if (props.type === "waypoint") {
-            return new ol.style.Style({
-              image: new ol.style.Icon({
-                src: "https://cdn-icons-png.flaticon.com/512/252/252025.png",
-                scale: 0.08,
-                anchor: [0.5, 1]
-              }),
-              text: props.name ? new ol.style.Text({
-                text: props.name,
-                font: '12px Arial',
-                fill: new ol.style.Fill({ color: '#000' }),
-                stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-                offsetY: -15
-              }) : null
-            });
-          } else {
-            return new ol.style.Style({
-              image: new ol.style.Circle({
-                radius: 6,
-                fill: new ol.style.Fill({ color: "blue" }),
-                stroke: new ol.style.Stroke({ color: "white", width: 1.5 })
-              }),
-              text: props.name ? new ol.style.Text({
-                text: props.name,
-                font: '12px Arial',
-                fill: new ol.style.Fill({ color: '#000' }),
-                stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-                offsetY: -15
-              }) : null
-            });
-          }
-        } else if (geomType === "LineString") {
-          return new ol.style.Style({
-            stroke: new ol.style.Stroke({
-              color: "red",
-              width: 3
-            })
-          });
-        }
-        return null;
-      }
-
-      function convertToIST(utcStr) {
-        if (!utcStr) return "N/A";
-        try {
-          const date = new Date(utcStr);
-          if (isNaN(date.getTime())) return "N/A";
-          return new Intl.DateTimeFormat("en-GB", {
-            timeZone: "Asia/Kolkata",
-            hour12: false,
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-          }).format(date).replace(",", "");
-        } catch {
-          return "N/A";
-        }
-      }
-
-      function haversine(lat1, lon1, lat2, lon2) {
-        const R = 6371000;
-        const toRad = x => (x * Math.PI) / 180;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat / 2) ** 2 +
-                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-      }
-
-      function parseGPX(xmlString, filename) {
-        try {
-          const parser = new DOMParser();
-          const gpx = parser.parseFromString(xmlString, "application/xml");
-          if (gpx.documentElement.nodeName === "parsererror") {
-            throw new Error("Invalid GPX XML format");
-          }
-
-          const trkpts = Array.from(gpx.getElementsByTagName("trkpt"));
-          const features = [];
-          const lineCoords = [];
-          const speeds = [];
-          let totalDistance = 0;
-          const elevations = [];
-
-          if (trkpts.length === 0) {
-            throw new Error("No track points found in GPX file");
-          }
-
-          const lonLats = [];
-          const times = [];
-          for (let i = 0; i < trkpts.length; i++) {
-            const pt = trkpts[i];
-            const lat = parseFloat(pt.getAttribute("lat"));
-            const lon = parseFloat(pt.getAttribute("lon"));
-            if (isNaN(lat) || isNaN(lon)) continue;
-
-            const ele = parseFloat(pt.getElementsByTagName("ele")[0]?.textContent || 0);
-            const timeStr = pt.getElementsByTagName("time")[0]?.textContent || null;
-            lonLats.push([lon, lat]);
-            times.push(timeStr);
-            elevations.push(ele);
-
-            let speed = 0;
-            if (i > 0) {
-              const dist = haversine(lonLats[i-1][1], lonLats[i-1][0], lat, lon);
-              totalDistance += dist;
-              if (timeStr && times[i-1]) {
-                const timeDiff = (new Date(timeStr) - new Date(times[i-1])) / 1000;
-                if (timeDiff > 0) speed = (dist / timeDiff) * 3.6;
-              }
-            }
-            speeds.push(speed);
-          }
-
-          // Start feature
-          if (lonLats.length > 0) {
-            features.push(new ol.Feature({
-              geometry: new ol.geom.Point(ol.proj.fromLonLat([lonLats[0][0], lonLats[0][1]])),
-              type: "start",
-              lat: lonLats[0][1],
-              lon: lonLats[0][0],
-              elevation: elevations[0],
-              time: times[0],
-              istTime: convertToIST(times[0]),
-              speed: speeds[0]
-            }));
-          }
-
-          // Middle multi point
-          if (lonLats.length > 2) {
-            const middleCoords = [];
-            const middleData = [];
-            for (let i = 1; i < lonLats.length - 1; i++) {
-              middleCoords.push(ol.proj.fromLonLat([lonLats[i][0], lonLats[i][1]]));
-              middleData.push({
-                lat: lonLats[i][1],
-                lon: lonLats[i][0],
-                elevation: elevations[i],
-                time: times[i],
-                istTime: convertToIST(times[i]),
-                speed: speeds[i]
-              });
-            }
-            features.push(new ol.Feature({
-              geometry: new ol.geom.MultiPoint(middleCoords),
-              type: "multi_trackpoints",
-              pointsData: middleData
-            }));
-          }
-
-          // End feature
-          if (lonLats.length > 1) {
-            features.push(new ol.Feature({
-              geometry: new ol.geom.Point(ol.proj.fromLonLat([lonLats[lonLats.length - 1][0], lonLats[lonLats.length - 1][1]])),
-              type: "end",
-              lat: lonLats[lonLats.length - 1][1],
-              lon: lonLats[lonLats.length - 1][0],
-              elevation: elevations[elevations.length - 1],
-              time: times[times.length - 1],
-              istTime: convertToIST(times[times.length - 1]),
-              speed: speeds[speeds.length - 1]
-            }));
-          }
-
-          // Detect halt points
-          for (let i = 1; i < times.length; i++) {
-            if (times[i] && times[i - 1]) {
-              const timeDiffMs = new Date(times[i]) - new Date(times[i - 1]);
-              if (timeDiffMs > 10 * 60 * 1000) {
-                const stopLat = lonLats[i - 1][1];
-                const stopLon = lonLats[i - 1][0];
-                const stopFeature = new ol.Feature({
-                  geometry: new ol.geom.Point(ol.proj.fromLonLat([stopLon, stopLat])),
-                  type: "stop",
-                  lat: stopLat,
-                  lon: stopLon,
-                  istTime: convertToIST(times[i - 1]),
-                  haltDuration: Math.round(timeDiffMs / 60000) + " min"
-                });
-                const isDuplicate = features.some(f => f.get("type") === "stop" && 
-                  f.get("lat") === stopLat && f.get("lon") === stopLon);
-                if (!isDuplicate) {
-                  features.push(stopFeature);
-                }
-              }
-            }
-          }
-
-          // Line feature
-          if (lonLats.length > 1) {
-            features.push(new ol.Feature({
-              geometry: new ol.geom.LineString(lonLats.map(c => ol.proj.fromLonLat([c[0], c[1]]))),
-              type: "track"
-            }));
-          }
-
-          return { 
-            features, 
-            totalDistance, 
-            elevations, 
-            startTime: times[0], 
-            endTime: times[times.length - 1], 
-            speeds, 
-            name: filename 
-          };
-        } catch (err) {
-          throw new Error(`Failed to parse GPX file "${filename}": ${err.message}`);
-        }
-      }
-
-      function parseKML(xmlString, filename) {
-        try {
-          const parser = new DOMParser();
-          const kml = parser.parseFromString(xmlString, "application/xml");
-          if (kml.documentElement.nodeName === "parsererror") {
-            throw new Error("Invalid KML XML format");
-          }
-
-          const features = [];
-          let totalDistance = 0;
-          let startTime = null;
-          let endTime = null;
-          const speeds = [];
-          const elevations = [];
-          const placemarks = kml.getElementsByTagName("Placemark");
-
-          if (placemarks.length === 0) {
-            throw new Error("No placemarks found in KML file");
-          }
-
-          // Collect track points and lines separately
-          let trackPoints = [];
-          let lineFeatures = [];
-
-          for (const placemark of placemarks) {
-            const name = placemark.getElementsByTagName("name")[0]?.textContent || '';
-            const description = placemark.getElementsByTagName("description")[0]?.textContent || '';
-            const point = placemark.getElementsByTagName("Point")[0];
-            const lineString = placemark.getElementsByTagName("LineString")[0];
-            const extendedData = placemark.getElementsByTagName("ExtendedData")[0];
-            
-            let props = { 
-                name,
-                description: description.trim() || null
-            };
-
-            // Extract extended data
-            if (extendedData) {
-                for (const data of extendedData.getElementsByTagName("Data")) {
-                    const key = data.getAttribute("name");
-                    const value = data.getElementsByTagName("value")[0]?.textContent;
-                    if (key && value) props[key] = value;
-                }
-            }
-
-            // Parse description for additional properties if it's HTML
-            if (props.description && props.description.includes('<td>')) {
-                try {
-                    const descDoc = parser.parseFromString(props.description, "text/html");
-                    const tables = descDoc.getElementsByTagName('table');
-                    if (tables.length > 0) {
-                        const rows = tables[0].getElementsByTagName('tr');
-                        for (const row of rows) {
-                            const cells = row.getElementsByTagName('td');
-                            if (cells.length >= 2) {
-                                const key = cells[0].textContent.trim().replace(':', '');
-                                const value = cells[1].textContent.trim();
-                                if (key && value) props[key] = value;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.log("Couldn't parse description HTML", e);
-                }
-            }
-
-            if (point) {
-                const coordinates = point.getElementsByTagName("coordinates")[0]?.textContent.trim();
-                if (!coordinates) continue;
-                const coords = coordinates.split(',').map(parseFloat);
-                if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) continue;
-
-                const lon = coords[0];
-                const lat = coords[1];
-                const elevation = coords[2] || 0;
-                const time = props.time || null;
-                const speed = props.speed ? parseFloat(props.speed) : 0;
-                
-                // Determine point type based on name or properties
-                const type = props.type || 
-                             (name.toLowerCase().includes('start') ? 'start' : 
-                              name.toLowerCase().includes('end') ? 'end' : 
-                              name.toLowerCase().includes('stop') ? 'stop' : 
-                              name.toLowerCase().includes('waypoint') ? 'waypoint' : 'trackpoint');
-
-                if (type === "trackpoint" || type === "start" || type === "end") {
-                    trackPoints.push({
-                        lon, lat, elevation, time, speed, istTime: convertToIST(time),
-                        name, description: props.description
-                    });
-                    elevations.push(elevation);
-                    speeds.push(speed);
-                    if (time) {
-                        if (!startTime || new Date(time) < new Date(startTime)) startTime = time;
-                        if (!endTime || new Date(time) > new Date(endTime)) endTime = time;
-                    }
-                } else {
-                    // Other points like waypoints or stops
-                    features.push(new ol.Feature({
-                        geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
-                        lat, lon, elevation, type, time, istTime: convertToIST(time), 
-                        speed, name, description: props.description
-                    }));
-                }
-            } else if (lineString) {
-                const coordinates = lineString.getElementsByTagName("coordinates")[0]?.textContent.trim();
-                if (!coordinates) continue;
-                const coords = coordinates.split(/\s+/).map(coord => {
-                    const [lon, lat, ele] = coord.split(",").map(parseFloat);
-                    if (isNaN(lon) || isNaN(lat)) return null;
-                    return ol.proj.fromLonLat([lon, lat]);
-                }).filter(coord => coord !== null);
-
-                if (coords.length > 1) {
-                    for (let i = 1; i < coords.length; i++) {
-                        const from = ol.proj.toLonLat(coords[i-1]);
-                        const to = ol.proj.toLonLat(coords[i]);
-                        totalDistance += haversine(from[1], from[0], to[1], to[0]);
-                    }
-                    lineFeatures.push(new ol.Feature({
-                        geometry: new ol.geom.LineString(coords),
-                        type: "track",
-                        name,
-                        description: props.description
-                    }));
-                }
-            }
-        }
-
-        // Process track points
-        if (trackPoints.length > 0) {
-            // Sort by time if available
-            if (trackPoints.some(p => p.time)) {
-                trackPoints.sort((a, b) => new Date(a.time) - new Date(b.time));
-            }
-
-            // Recalculate speeds if times are present
-            if (trackPoints[0].time) {
-                speeds[0] = 0;
-                for (let i = 1; i < trackPoints.length; i++) {
-                    const dist = haversine(trackPoints[i-1].lat, trackPoints[i-1].lon, trackPoints[i].lat, trackPoints[i].lon);
-                    const timeDiff = (new Date(trackPoints[i].time) - new Date(trackPoints[i-1].time)) / 1000;
-                    speeds[i] = (timeDiff > 0) ? (dist / timeDiff) * 3.6 : 0;
-                }
-            }
-
-            // Start
-            const startPoint = trackPoints[0];
-            features.push(new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([startPoint.lon, startPoint.lat])),
-                type: "start",
-                lat: startPoint.lat,
-                lon: startPoint.lon,
-                elevation: startPoint.elevation,
-                time: startPoint.time,
-                istTime: startPoint.istTime,
-                speed: speeds[0],
-                name: startPoint.name,
-                description: startPoint.description
-            }));
-
-            // Middle
-            if (trackPoints.length > 2) {
-                const middleCoords = [];
-                const middleData = [];
-                for (let i = 1; i < trackPoints.length - 1; i++) {
-                    const p = trackPoints[i];
-                    middleCoords.push(ol.proj.fromLonLat([p.lon, p.lat]));
-                    middleData.push({
-                        lat: p.lat,
-                        lon: p.lon,
-                        elevation: p.elevation,
-                        time: p.time,
-                        istTime: p.istTime,
-                        speed: speeds[i],
-                        name: p.name,
-                        description: p.description
-                    });
-                }
-                features.push(new ol.Feature({
-                    geometry: new ol.geom.MultiPoint(middleCoords),
-                    type: "multi_trackpoints",
-                    pointsData: middleData
-                }));
-            }
-
-            // End
-            const endPoint = trackPoints[trackPoints.length - 1];
-            features.push(new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([endPoint.lon, endPoint.lat])),
-                type: "end",
-                lat: endPoint.lat,
-                lon: endPoint.lon,
-                elevation: endPoint.elevation,
-                time: endPoint.time,
-                istTime: endPoint.istTime,
-                speed: speeds[speeds.length - 1],
-                name: endPoint.name,
-                description: endPoint.description
-            }));
-        }
-
-        // Detect halts if times present
-        if (trackPoints.length > 1 && trackPoints[0].time) {
-            for (let i = 1; i < trackPoints.length; i++) {
-                const timeDiffMs = new Date(trackPoints[i].time) - new Date(trackPoints[i - 1].time);
-                if (timeDiffMs > 10 * 60 * 1000) {
-                    const stopPoint = trackPoints[i - 1];
-                    const stopFeature = new ol.Feature({
-                        geometry: new ol.geom.Point(ol.proj.fromLonLat([stopPoint.lon, stopPoint.lat])),
-                        type: "stop",
-                        lat: stopPoint.lat,
-                        lon: stopPoint.lon,
-                        istTime: stopPoint.istTime,
-                        haltDuration: Math.round(timeDiffMs / 60000) + " min",
-                        name: stopPoint.name,
-                        description: stopPoint.description
-                    });
-                    const isDuplicate = features.some(f => f.get("type") === "stop" && 
-                        f.get("lat") === stopPoint.lat && f.get("lon") === stopPoint.lon);
-                    if (!isDuplicate) {
-                        features.push(stopFeature);
-                    }
-                }
-            }
-        }
-
-        // Add line features
-        features.push(...lineFeatures);
-
-        return { features, totalDistance, elevations, startTime, endTime, speeds, name: filename };
-    } catch (err) {
-        throw new Error(`Failed to parse KML file "${filename}": ${err.message}`);
-    }
-}
-
-      function generateKML({ features, name }) {
-        let kmlOutput = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>${name || "File Data"}</name>
-    <Style id="trackStyle">
-      <LineStyle>
-        <color>ff0000ff</color>
-        <width>3</width>
-      </LineStyle>
-    </Style>
-    <Style id="startPoint">
-      <IconStyle>
-        <IconStyle>
-        <color>ff00ff00</color>
-        <scale>1.2</scale>
-        <Icon>
-          <href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="endPoint">
-      <IconStyle>
-        <color>ff0000ff</color>
-        <scale>1.2</scale>
-        <Icon>
-          <href>http://maps.google.com/mapfiles/kml/paddle/red-circle.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="stopPoint">
-      <IconStyle>
-        <color>ff00ffff</color>
-        <scale>1.0</scale>
-        <Icon>
-          <href>http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="waypoint">
-      <IconStyle>
-        <scale>1.0</scale>
-        <Icon>
-          <href>https://cdn-icons-png.flaticon.com/512/252/252025.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="trackPoint">
-      <IconStyle>
-        <color>ffff0000</color>
-        <scale>0.8</scale>
-        <Icon>
-          <href>http://maps.google.com/mapfiles/kml/paddle/blu-circle.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>`;
-
-        features.forEach((feature) => {
-          const geom = feature.getGeometry();
-          const props = feature.getProperties();
-          const type = props.type;
-
-          if (geom.getType() === "Point") {
-            const [lon, lat] = ol.proj.toLonLat(geom.getCoordinates());
-            let styleId = type === "start" ? "startPoint" :
-                          type === "end" ? "endPoint" :
-                          type === "stop" ? "stopPoint" :
-                          type === "waypoint" ? "waypoint" : "trackPoint";
-
-            kmlOutput += `
-    <Placemark>
-      <name>${props.name || ''}</name>
-      ${props.description ? `<description><![CDATA[${props.description}]]></description>` : ''}
-      <styleUrl>#${styleId}</styleUrl>
-      <Point>
-        <coordinates>${lon},${lat}</coordinates>
-      </Point>
-      <ExtendedData>
-        <Data name="type"><value>${type}</value></Data>
-        ${props.name ? `<Data name="name"><value>${props.name}</value></Data>` : ""}
-        ${props.elevation ? `<Data name="elevation"><value>${props.elevation}</value></Data>` : ""}
-        ${props.time ? `<Data name="time"><value>${props.time}</value></Data>` : ""}
-        ${props.istTime ? `<Data name="istTime"><value>${props.istTime}</value></Data>` : ""}
-        ${props.speed !== undefined ? `<Data name="speed"><value>${props.speed.toFixed(2)}</value></Data>` : ""}
-        ${props.haltDuration ? `<Data name="haltDuration"><value>${props.haltDuration}</value></Data>` : ""}
-      </ExtendedData>
-    </Placemark>`;
-          } else if (geom.getType() === "MultiPoint") {
-            const coords = geom.getCoordinates();
-            const pointsData = props.pointsData || [];
-            for (let i = 0; i < coords.length; i++) {
-              const [lon, lat] = ol.proj.toLonLat(coords[i]);
-              const pointProps = pointsData[i] || {};
-              kmlOutput += `
-    <Placemark>
-      <name>${pointProps.name || ''}</name>
-      ${pointProps.description ? `<description><![CDATA[${pointProps.description}]]></description>` : ''}
-      <styleUrl>#trackPoint</styleUrl>
-      <Point>
-        <coordinates>${lon},${lat}</coordinates>
-      </Point>
-      <ExtendedData>
-        <Data name="type"><value>trackpoint</value></Data>
-        ${pointProps.elevation ? `<Data name="elevation"><value>${pointProps.elevation}</value></Data>` : ""}
-        ${pointProps.time ? `<Data name="time"><value>${pointProps.time}</value></Data>` : ""}
-        ${pointProps.istTime ? `<Data name="istTime"><value>${pointProps.istTime}</value></Data>` : ""}
-        ${pointProps.speed !== undefined ? `<Data name="speed"><value>${pointProps.speed.toFixed(2)}</value></Data>` : ""}
-      </ExtendedData>
-    </Placemark>`;
-            }
-          } else if (geom.getType() === "LineString") {
-            const coordinates = geom.getCoordinates().map(coord => {
-              const [lon, lat] = ol.proj.toLonLat(coord);
-              return `${lon},${lat}`;
-            }).join(" ");
-
-            kmlOutput += `
-    <Placemark>
-      <name>${props.name || ''}</name>
-      ${props.description ? `<description><![CDATA[${props.description}]]></description>` : ''}
-      <styleUrl>#trackStyle</styleUrl>
-      <LineString>
-        <tessellate>1</tessellate>
-        <coordinates>${coordinates}</coordinates>
-      </LineString>
-      <ExtendedData>
-        <Data name="type"><value>track</value></Data>
-      </ExtendedData>
-    </Placemark>`;
-          }
-        });
-
-        kmlOutput += `
-  </Document>
-</kml>`;
-        return kmlOutput;
-      }
-
-      async function downloadKML(data, filename) {
-        try {
-          if (window.showSaveFilePicker) {
-            const suggestedName = filename || "output.kml";
-            const fileHandle = await window.showSaveFilePicker({
-              suggestedName,
-              types: [{
-                description: "KML Files",
-                accept: { "application/vnd.google-earth.kml+xml": [".kml"] }
-              }]
-            });
-            const writable = await fileHandle.createWritable();
-            await writable.write(data);
-            await writable.close();
-          } else {
-            const blob = new Blob([data], { type: "application/vnd.google-earth.kml+xml" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }
-        } catch (err) {
-          if (err.name === "AbortError") {
-            console.log("User cancelled the save dialog");
-          } else {
-            console.error("Error saving file:", err);
-            alert(`Failed to save file: ${err.message}`);
+            tooltip.className = 'ol-tooltip';
+            currentFeature = null;
           }
         }
-      }
+      });
 
-      function updateSummary() {
-        let trackCount = 0;
-        let stopCount = 0;
+      measureTool = new ol.interaction.Draw({
+        source: vectorSource,
+        type: 'LineString',
+        style: new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 255, 0.7)', width: 2 })
+        })
+      });
+      measureTool.setActive(false);
+      map.addInteraction(measureTool);
+      measureTool.on('drawend', (evt) => {
+        const line = evt.feature.getGeometry();
+        const coordinates = line.getCoordinates();
         let totalDistance = 0;
-        let minElevation = Infinity;
-        let maxElevation = -Infinity;
-        let startTime = null;
-        let endTime = null;
-        let speeds = [];
-        let trackFiles = 0;
-
-        for (const fileData of allFeatures.filter(f => f.visible)) {
-          for (const f of fileData.source.getFeatures()) {
-            const t = f.get("type");
-            if (t === "trackpoint" || t === "start" || t === "end") {
-              trackCount++;
-              if (f.get("elevation") !== undefined && !isNaN(f.get("elevation"))) {
-                minElevation = Math.min(minElevation, f.get("elevation"));
-                maxElevation = Math.max(maxElevation, f.get("elevation"));
-              }
-              if (f.get("speed") !== undefined && !isNaN(f.get("speed"))) speeds.push(f.get("speed"));
-            } else if (t === "stop") {
-              stopCount++;
-            } else if (t === "multi_trackpoints") {
-              const pointsData = f.get("pointsData") || [];
-              trackCount += pointsData.length;
-              pointsData.forEach(pd => {
-                if (pd.elevation !== undefined && !isNaN(pd.elevation)) {
-                  minElevation = Math.min(minElevation, pd.elevation);
-                  maxElevation = Math.max(maxElevation, pd.elevation);
-                }
-                if (pd.speed !== undefined && !isNaN(pd.speed)) speeds.push(pd.speed);
-              });
-            }
-          }
-          totalDistance += fileData.totalDistance || 0;
-          if (fileData.startTime && (!startTime || new Date(fileData.startTime) < new Date(startTime))) startTime = fileData.startTime;
-          if (fileData.endTime && (!endTime || new Date(fileData.endTime) > new Date(endTime))) endTime = fileData.endTime;
-          if (fileData.features.some(f => f.get("type") === "track")) trackFiles++;
+        for (let i = 1; i < coordinates.length; i++) {
+          const from = ol.proj.toLonLat(coordinates[i - 1]);
+          const to = ol.proj.toLonLat(coordinates[i]);
+          totalDistance += haversine(from[1], from[0], to[1], to[0]);
         }
+        document.getElementById('measure-result').innerHTML = `Distance: ${(totalDistance / 1000).toFixed(2)} km`;
+        document.getElementById('measure-result').style.display = 'block';
+        setTimeout(() => {
+          vectorSource.removeFeature(evt.feature);
+          document.getElementById('measure-result').style.display = 'none';
+        }, 5000);
+      });
 
-        const minSpeed = speeds.length > 0 ? Math.min(...speeds) : 0;
-        const maxSpeed = speeds.length > 0 ? Math.max(...speeds) : 0;
-        const avgSpeed = speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
+      areaTool = new ol.interaction.Draw({
+        source: vectorSource,
+        type: 'Polygon',
+        style: new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 255, 0.7)', width: 2 }),
+          fill: new ol.style.Fill({ color: 'rgba(0, 0, 255, 0.2)' })
+        })
+      });
+      areaTool.setActive(false);
+      map.addInteraction(areaTool);
+      areaTool.on('drawend', (evt) => {
+        const area = ol.sphere.getArea(evt.feature.getGeometry(), { projection: map.getView().getProjection() });
+        document.getElementById('measure-result').innerHTML = `Area: ${(area / 1000000).toFixed(2)} km²`;
+        document.getElementById('measure-result').style.display = 'block';
+        setTimeout(() => {
+          vectorSource.removeFeature(evt.feature);
+          document.getElementById('measure-result').style.display = 'none';
+        }, 5000);
+      });
+    }
 
-        const summaryTable = `
-          <table class="table table-bordered table-sm">
-            <tbody>
-              <tr><th>Tracks</th><td>${trackFiles}</td></tr>
-              <tr><th>Track Points</th><td>${trackCount}</td></tr>
-              <tr><th>Stop Points</th><td>${stopCount}</td></tr>
-              <tr><th>Start Time (IST)</th><td>${startTime ? convertToIST(startTime) : "N/A"}</td></tr>
-              <tr><th>End Time (IST)</th><td>${endTime ? convertToIST(endTime) : "N/A"}</td></tr>
-              <tr><th>Elevation (Min → Max)</th><td>${minElevation !== Infinity ? minElevation.toFixed(2) : "N/A"} m → ${maxElevation !== -Infinity ? maxElevation.toFixed(2) : "N/A"} m</td></tr>
-              <tr><th>Distance</th><td>${(totalDistance / 1000).toFixed(2)} km</td></tr>
-              <tr><th>Speed (km/h)</th><td>Min ${minSpeed.toFixed(2)}, Max ${maxSpeed.toFixed(2)}, Avg ${avgSpeed.toFixed(2)}</td></tr>
-            </tbody>
+    function showTooltip(coordinate, feature) {
+      if (!feature) return;
+      const props = feature.getProperties();
+      const geomType = feature.getGeometry().getType();
+      let tooltipHtml = '';
+      if (geomType === 'Point') {
+        const type = props.type || 'unknown';
+        tooltipHtml = `<table>
+          <tr><th>${type.charAt(0).toUpperCase() + type.slice(1)}</th><td></td></tr>
+          ${props.name ? `<tr><th>Name:</th><td>${props.name}</td></tr>` : ''}
+          <tr><th>Lat:</th><td>${props.lat?.toFixed(5) || 'N/A'}</td></tr>
+          <tr><th>Lon:</th><td>${props.lon?.toFixed(5) || 'N/A'}</td></tr>
+          ${props.elevation !== undefined ? `<tr><th>Elevation:</th><td>${props.elevation?.toFixed(2) || 'N/A'} m</td></tr>` : ''}
+          ${props.istTime ? `<tr><th>Time (IST):</th><td>${props.istTime || 'N/A'}</td></tr>` : ''}
+          ${props.haltDuration ? `<tr><th>Halt Duration:</th><td>${props.haltDuration}</td></tr>` : props.speed !== undefined ? `<tr><th>Speed:</th><td>${props.speed?.toFixed(2) || 'N/A'} km/h</td></tr>` : ''}
+          ${props.description ? `<tr><th>Description:</th><td>${sanitizeHTML(props.description)}</td></tr>` : ''}
+        </table>`;
+        if (props.type === 'waypoint') {
+          const idx = waypointSource.getFeatures().indexOf(feature);
+          if (idx !== -1) tooltipHtml += `<button class="btn btn-danger btn-sm delete-btn" onclick="deleteWaypointById(${idx})">Delete Waypoint</button>`;
+        }
+      } else if (geomType === 'MultiPoint') {
+        const coords = feature.getGeometry().getCoordinates();
+        let minDist = Infinity, closestIndex = -1;
+        for (let i = 0; i < coords.length; i++) {
+          const dx = coords[i][0] - coordinate[0], dy = coords[i][1] - coordinate[1];
+          const dist = dx * dx + dy * dy;
+          if (dist < minDist) {
+            minDist = dist;
+            closestIndex = i;
+          }
+        }
+        if (closestIndex !== -1) {
+          const pointData = props.pointsData[closestIndex];
+          tooltipHtml = `<table>
+            <tr><th>Track Point</th><td></td></tr>
+            ${pointData.name ? `<tr><th>Name:</th><td>${pointData.name}</td></tr>` : ''}
+            <tr><th>Lat:</th><td>${pointData.lat.toFixed(5)}</td></tr>
+            <tr><th>Lon:</th><td>${pointData.lon.toFixed(5)}</td></tr>
+            ${pointData.elevation !== undefined ? `<tr><th>Elevation:</th><td>${pointData.elevation?.toFixed(2) || 'N/A'} m</td></tr>` : ''}
+            ${pointData.istTime ? `<tr><th>Time (IST):</th><td>${pointData.istTime || 'N/A'}</td></tr>` : ''}
+            ${pointData.speed !== undefined ? `<tr><th>Speed:</th><td>${pointData.speed?.toFixed(2) || 'N/A'} km/h</td></tr>` : ''}
+            ${pointData.description ? `<tr><th>Description:</th><td>${sanitizeHTML(pointData.description)}</td></tr>` : ''}
           </table>`;
-
-        document.getElementById("summary").innerHTML = allFeatures.filter(f => f.visible).length > 0 ? summaryTable : `<table class="table table-bordered table-sm"><tbody><tr><th colspan="2">Load one or more .gpx, .kml, or .kmz files to see details.</th></tr></tbody></table>`;
-        document.getElementById("legend").style.display = allFeatures.filter(f => f.visible).length > 0 ? "block" : "none";
+        }
+      } else if (geomType === 'LineString') {
+        const coords = feature.getGeometry().getCoordinates();
+        const start = ol.proj.toLonLat(coords[0]), end = ol.proj.toLonLat(coords[coords.length - 1]);
+        tooltipHtml = `<table>
+          <tr><th>Track Line</th><td></td></tr>
+          ${props.name ? `<tr><th>Name:</th><td>${props.name}</td></tr>` : ''}
+          <tr><th>Start:</th><td>${start[1].toFixed(5)}, ${start[0].toFixed(5)}</td></tr>
+          <tr><th>End:</th><td>${end[1].toFixed(5)}, ${end[0].toFixed(5)}</td></tr>
+          ${props.description ? `<tr><th>Description:</th><td>${sanitizeHTML(props.description)}</td></tr>` : ''}
+        </table>`;
       }
+      tooltip.innerHTML = tooltipHtml;
+      updateTooltipPosition(coordinate);
+      tooltip.className = 'ol-tooltip visible';
+    }
 
-      function setupTimeSlider() {
-        currentTrackPoints = [];
-        allFeatures.filter(f => f.visible).forEach(file => {
-          file.source.getFeatures().forEach(feat => {
-            if (['start', 'end', 'stop', 'trackpoint'].includes(feat.get('type')) && feat.get('time')) {
-              currentTrackPoints.push(feat);
-            } else if (feat.get('type') === 'multi_trackpoints') {
-              const coords = feat.getGeometry().getCoordinates();
-              const data = feat.get('pointsData');
-              for (let i = 0; i < data.length; i++) {
-                if (data[i].time) {
-                  const pointGeom = new ol.geom.Point(coords[i]);
-                  currentTrackPoints.push(new PseudoFeature(pointGeom, data[i]));
-                }
-              }
-            }
-          });
-        });
+    function updateTooltipPosition(coordinate) {
+      if (!coordinate) return;
+      const pixel = map.getPixelFromCoordinate(coordinate);
+      const viewport = map.getViewport();
+      const maxX = viewport.clientWidth - tooltip.offsetWidth - 10;
+      const maxY = viewport.clientHeight - tooltip.offsetHeight - 10;
+      tooltip.style.left = Math.min(Math.max(pixel[0], 10), maxX) + 'px';
+      tooltip.style.top = Math.min(Math.max(pixel[1] - 10, 10), maxY) + 'px';
+    }
 
-        if (currentTrackPoints.length === 0) {
-          document.getElementById('time-slider-container').style.display = 'none';
+    function sanitizeHTML(html) {
+      const div = document.createElement('div');
+      div.textContent = html;
+      return div.innerHTML;
+    }
+
+    function addWaypoint(lat, lon, name = '') {
+      const feature = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
+        type: 'waypoint',
+        lat,
+        lon,
+        name
+      });
+      waypointSource.addFeature(feature);
+      updateSummary();
+      updateElevationChart();
+      document.getElementById('legend').style.display = 'block';
+    }
+
+    window.deleteWaypointById = (index) => {
+      const feat = waypointSource.getFeatures()[index];
+      if (feat) {
+        waypointSource.removeFeature(feat);
+        tooltip.className = 'ol-tooltip';
+        currentFeature = null;
+        updateSummary();
+        updateElevationChart();
+        document.getElementById('legend').style.display = (allFeatures.filter(f => f.visible).length > 0 || waypointSource.getFeatures().length > 0) ? 'block' : 'none';
+      }
+    };
+
+    function setupEventListeners() {
+      document.getElementById('toggleSidebar').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        setTimeout(() => map.updateSize(), 300);
+      });
+
+      document.getElementById('toggleTheme').addEventListener('click', function () {
+        document.body.classList.toggle('dark-mode');
+        this.querySelector('i').classList.toggle('bi-moon');
+        this.querySelector('i').classList.toggle('bi-sun');
+      });
+
+      window.addEventListener('resize', () => {
+        setTimeout(() => {
+          map.updateSize();
+          if (currentFeature && lastTooltipPosition) updateTooltipPosition(lastTooltipPosition);
+        }, 300);
+      });
+
+      document.getElementById('inputfile').addEventListener('change', async (event) => {
+        const files = event.target.files;
+        if (!files.length) return;
+        if (files.length > 50 || Array.from(files).some(f => f.size > 50 * 1024 * 1024)) {
+          showError('Maximum 10 files or 10MB per file allowed.');
           return;
         }
 
-        currentTrackPoints.sort((a, b) => new Date(a.get('time')) - new Date(b.get('time')));
+        allFeatures = [];
+        waypointSource.clear();
+        updateLayerTreeview();
+        updateSummary();
+        updateElevationChart();
 
-        const slider = document.getElementById('time-slider');
-        slider.max = currentTrackPoints.length - 1;
-        slider.value = 0;
-        document.getElementById('time-slider-container').style.display = 'block';
-        updateAnimationPosition(0);
-      }
+        for (const file of files) {
+          try {
+            const reader = new FileReader();
+            const fileName = file.name.toLowerCase();
+            const fileType = fileName.endsWith('.gpx') ? 'gpx' : 'kml/kmz';
+            let data;
 
-      function startAnimation() {
-        if (animationInterval || currentTrackPoints.length === 0) return;
-        const slider = document.getElementById('time-slider');
-        animationInterval = setInterval(() => {
-          let currentValue = parseInt(slider.value);
-          if (currentValue >= currentTrackPoints.length - 1) {
-            pauseAnimation();
-            return;
+            if (fileName.endsWith('.gpx')) {
+              reader.onload = (e) => {
+                try {
+                  data = parseGPX(e.target.result, file.name);
+                  addFileToMap(data, fileType);
+                } catch (err) {
+                  showError(`Error parsing "${file.name}": ${err.message}`);
+                }
+              };
+              reader.readAsText(file);
+            } else if (fileName.endsWith('.kml')) {
+              reader.onload = (e) => {
+                try {
+                  data = parseKML(e.target.result, file.name);
+                  addFileToMap(data, fileType);
+                } catch (err) {
+                  showError(`Error parsing "${file.name}": ${err.message}`);
+                }
+              };
+              reader.readAsText(file);
+            } else if (fileName.endsWith('.kmz')) {
+              reader.onload = async (e) => {
+                try {
+                  const zip = await JSZip.loadAsync(file);
+                  const kmlFiles = Object.keys(zip.files).filter(name => name.endsWith('.kml'));
+                  if (!kmlFiles.length) throw new Error('No KML files found in KMZ');
+                  const kmlPromises = kmlFiles.map(async (kmlFile) => {
+                    const kmlContent = await zip.file(kmlFile).async('string');
+                    return parseKML(kmlContent, kmlFile);
+                  });
+                  const kmlData = await Promise.all(kmlPromises);
+                  data = kmlData.reduce((acc, d) => ({
+                    features: [...acc.features, ...d.features],
+                    totalDistance: acc.totalDistance + (d.totalDistance || 0),
+                    elevations: [...acc.elevations, ...(d.elevations || [])],
+                    startTime: acc.startTime || d.startTime,
+                    endTime: d.endTime || acc.endTime,
+                    speeds: [...acc.speeds, ...(d.speeds || [])],
+                    name: file.name
+                  }), { features: [], totalDistance: 0, elevations: [], speeds: [], name: file.name });
+                  addFileToMap(data, fileType);
+                } catch (err) {
+                  showError(`Error parsing "${file.name}": ${err.message}`);
+                }
+              };
+              reader.readAsArrayBuffer(file);
+            } else {
+              showError(`Unsupported file type: "${file.name}"`);
+              continue;
+            }
+          } catch (err) {
+            showError(`Error reading "${file.name}": ${err.message}`);
           }
-          currentValue++;
-          slider.value = currentValue;
-          updateAnimationPosition(currentValue);
-        }, 100);
+        }
+      });
+
+      document.getElementById('resetButton').addEventListener('click', resetMap);
+
+      document.getElementById('measure-tool').addEventListener('click', () => toggleTool('measure'));
+      document.getElementById('area-tool').addEventListener('click', () => toggleTool('area'));
+      document.getElementById('edit-tool').addEventListener('click', () => toggleTool('edit'));
+      document.getElementById('waypoint-tool').addEventListener('click', () => toggleTool('waypoint'));
+
+      document.getElementById('print-tool').addEventListener('click', async () => {
+        const activeLayer = googleSatelliteLayer.getVisible() ? googleSatelliteLayer : osmLayer;
+        await new Promise((resolve) => {
+          activeLayer.once('postrender', () => {
+            setTimeout(resolve, 500); // Wait for tiles to fully load
+          });
+          map.renderSync();
+        });
+        const mapCanvas = document.createElement('canvas');
+        const size = map.getSize();
+        mapCanvas.width = size[0];
+        mapCanvas.height = size[1];
+        const ctx = mapCanvas.getContext('2d');
+        map.getLayers().getArray().forEach((layer, idx) => {
+          if (layer.getVisible()) {
+            const layerCanvas = map.getViewport().querySelectorAll('canvas')[idx];
+            if (layerCanvas) ctx.drawImage(layerCanvas, 0, 0, size[0], size[1]);
+          }
+        });
+        const pdf = new jspdf.jsPDF('landscape', 'pt', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth(), pdfHeight = pdf.internal.pageSize.getHeight();
+        const ratio = Math.min(pdfWidth / size[0], pdfHeight / size[1]);
+        pdf.addImage(mapCanvas.toDataURL('image/png'), 'PNG', 0, 0, size[0] * ratio, size[1] * ratio);
+        pdf.save('map.pdf');
+      });
+
+      document.getElementById('share-tool').addEventListener('click', () => {
+        const view = map.getView();
+        const center = ol.proj.toLonLat(view.getCenter());
+        const zoom = view.getZoom();
+        const base = document.getElementById('layer-toggle').checked ? '1' : '0';
+        const theme = document.body.classList.contains('dark-mode') ? '1' : '0';
+        const vis = allFeatures.map(f => f.visible ? '1' : '0').join(',');
+        const shareLink = `${window.location.origin}${window.location.pathname}?center=${center[0].toFixed(4)},${center[1].toFixed(4)}&zoom=${zoom.toFixed(2)}&base=${base}&theme=${theme}&vis=${vis}`;
+        document.getElementById('shareLink').value = shareLink;
+        new bootstrap.Modal(document.getElementById('shareModal')).show();
+      });
+
+      document.getElementById('copyLink').addEventListener('click', () => {
+        navigator.clipboard.writeText(document.getElementById('shareLink').value)
+          .then(() => showError('Link copied to clipboard!'));
+      });
+
+      document.getElementById('play-button').addEventListener('click', startAnimation);
+      document.getElementById('pause-button').addEventListener('click', pauseAnimation);
+      document.getElementById('time-slider').addEventListener('input', function () {
+        pauseAnimation();
+        updateAnimationPosition(this.value);
+      });
+
+      document.getElementById('downloadKml').addEventListener('click', () => {
+        const features = [...allFeatures.filter(f => f.visible).flatMap(f => f.source.getFeatures()), ...waypointSource.getFeatures()];
+        const kml = generateKML({ features, name: 'Edited_Data' });
+        downloadKML(kml, 'edited_data.kml');
+      });
+
+      document.getElementById('downloadBatchKml').addEventListener('click', () => {
+        const batchKml = allFeatures.map((data, idx) => generateKML({ features: data.source.getFeatures(), name: data.name || `File_${idx + 1}` }))
+          .concat(waypointSource.getFeatures().length ? [generateKML({ features: waypointSource.getFeatures(), name: 'Waypoints' })] : [])
+          .join('\n')
+          .replace(/<\?xml[^>]*>\n<kml[^>]*>\n\s*<Document>\n|\n\s*<\/Document>\n\s*<\/kml>/g, '');
+        const kmlWrapper = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n${batchKml}\n</Document>\n</kml>`;
+        downloadKML(kmlWrapper, 'batch_files.kml');
+      });
+    }
+
+    function addFileToMap(data, fileType) {
+      const fileSource = new ol.source.Vector();
+      const fileLayer = new ol.layer.Vector({ source: fileSource, style: styleFunction, zIndex: 1040 });
+      map.addLayer(fileLayer);
+      const modifyInteraction = new ol.interaction.Modify({
+        source: fileSource,
+        deleteCondition: (event) => ol.events.condition.shiftKeyOnly(event) && ol.events.condition.singleClick(event)
+      });
+      map.addInteraction(modifyInteraction);
+      modifyInteraction.setActive(editMode);
+      modifyInteraction.on('modifyend', (evt) => {
+        const source = evt.target.get('source');
+        evt.features.forEach((feat) => {
+          if (feat.get('type') === 'multi_trackpoints') {
+            const coords = feat.getGeometry().getCoordinates();
+            const pointsData = feat.get('pointsData');
+            for (let i = 0; i < coords.length; i++) {
+              const [lon, lat] = ol.proj.toLonLat(coords[i]);
+              pointsData[i].lon = lon;
+              pointsData[i].lat = lat;
+            }
+          } else if (feat.getGeometry().getType() === 'Point') {
+            const [lon, lat] = ol.proj.toLonLat(feat.getGeometry().getCoordinates());
+            feat.set('lon', lon);
+            feat.set('lat', lat);
+          }
+        });
+        const feats = source.getFeatures();
+        const startFeat = feats.find(f => f.get('type') === 'start');
+        const multiFeat = feats.find(f => f.get('type') === 'multi_trackpoints');
+        const endFeat = feats.find(f => f.get('type') === 'end');
+        const lineFeat = feats.find(f => f.get('type') === 'track');
+        if (lineFeat) {
+          const trackCoords = [];
+          if (startFeat) trackCoords.push(startFeat.getGeometry().getCoordinates());
+          if (multiFeat) trackCoords.push(...multiFeat.getGeometry().getCoordinates());
+          if (endFeat) trackCoords.push(endFeat.getGeometry().getCoordinates());
+          lineFeat.getGeometry().setCoordinates(trackCoords);
+        }
+        const fileData = allFeatures.find(fd => fd.source === source);
+        if (fileData) {
+          fileData.totalDistance = 0;
+          const trackCoords = lineFeat?.getGeometry().getCoordinates() || [];
+          for (let i = 1; i < trackCoords.length; i++) {
+            const from = ol.proj.toLonLat(trackCoords[i - 1]);
+            const to = ol.proj.toLonLat(trackCoords[i]);
+            fileData.totalDistance += haversine(from[1], from[0], to[1], to[0]);
+          }
+          let times = [];
+          if (startFeat && startFeat.get('time')) times.push(startFeat.get('time'));
+          if (multiFeat) times.push(...multiFeat.get('pointsData').map(pd => pd.time));
+          if (endFeat && endFeat.get('time')) times.push(endFeat.get('time'));
+          fileData.speeds = new Array(times.length).fill(0);
+          for (let i = 1; i < times.length; i++) {
+            if (times[i] && times[i - 1]) {
+              const dist = haversine(
+                ol.proj.toLonLat(trackCoords[i - 1])[1], ol.proj.toLonLat(trackCoords[i - 1])[0],
+                ol.proj.toLonLat(trackCoords[i])[1], ol.proj.toLonLat(trackCoords[i])[0]
+              );
+              const timeDiff = (new Date(times[i]) - new Date(times[i - 1])) / 1000;
+              if (timeDiff > 0) fileData.speeds[i] = (dist / timeDiff) * 3.6;
+            }
+          }
+          if (startFeat) startFeat.set('speed', fileData.speeds[0]);
+          if (multiFeat) {
+            const pointsData = multiFeat.get('pointsData');
+            for (let j = 0; j < pointsData.length; j++) pointsData[j].speed = fileData.speeds[j + 1];
+          }
+          if (endFeat) endFeat.set('speed', fileData.speeds[fileData.speeds.length - 1]);
+          updateSummary();
+          updateElevationChart();
+        }
+      });
+      fileSource.addFeatures(data.features);
+      data.source = fileSource;
+      data.layer = fileLayer;
+      data.visible = true;
+      data.fileType = fileType;
+      allFeatures.push(data);
+      updateLayerTreeview();
+      updateSummary();
+      updateElevationChart();
+      if (data.features.some(f => f.get('type') === 'trackpoint' || f.get('type') === 'multi_trackpoints')) setupTimeSlider();
+      const extent = ol.extent.createEmpty();
+      allFeatures.filter(f => f.visible).forEach(f => f.source.getFeatures().forEach(feat => ol.extent.extend(extent, feat.getGeometry().getExtent())));
+      if (!ol.extent.isEmpty(extent)) map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
+      document.getElementById('downloadKml').disabled = allFeatures.filter(f => f.visible).length === 0;
+      document.getElementById('downloadBatchKml').disabled = allFeatures.length < 2;
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('vis')) {
+        const visArr = params.get('vis').split(',').map(v => v === '1');
+        if (visArr.length === allFeatures.length) {
+          allFeatures.forEach((f, i) => {
+            f.visible = visArr[i];
+            f.layer.setVisible(f.visible);
+          });
+          updateLayerTreeview();
+          updateSummary();
+          updateElevationChart();
+          adjustMapView();
+        }
+      }
+    }
+
+    function toggleTool(tool) {
+      measureToolActive = tool === 'measure' ? !measureToolActive : false;
+      areaToolActive = tool === 'area' ? !areaToolActive : false;
+      waypointToolActive = tool === 'waypoint' ? !waypointToolActive : false;
+      editMode = tool === 'edit' ? !editMode : false;
+      measureTool.setActive(measureToolActive);
+      areaTool.setActive(areaToolActive);
+      map.getInteractions().forEach(i => { if (i instanceof ol.interaction.Modify) i.setActive(editMode); });
+      document.getElementById('measure-tool').style.backgroundColor = measureToolActive ? '#d4edda' : '';
+      document.getElementById('measure-tool').setAttribute('aria-pressed', measureToolActive);
+      document.getElementById('area-tool').style.backgroundColor = areaToolActive ? '#d4edda' : '';
+      document.getElementById('area-tool').setAttribute('aria-pressed', areaToolActive);
+      document.getElementById('edit-tool').style.backgroundColor = editMode ? '#d4edda' : '';
+      document.getElementById('edit-tool').setAttribute('aria-pressed', editMode);
+      document.getElementById('waypoint-tool').style.backgroundColor = waypointToolActive ? '#d4edda' : '';
+      document.getElementById('waypoint-tool').setAttribute('aria-pressed', waypointToolActive);
+      tooltip.className = 'ol-tooltip';
+    }
+
+    function showError(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast show position-fixed top-0 end-0 m-3';
+      toast.innerHTML = `<div class="toast-header bg-danger text-white"><strong>Error</strong><button type="button" class="btn-close" data-bs-dismiss="toast"></button></div><div class="toast-body">${message}</div>`;
+      document.body.appendChild(toast);
+      new bootstrap.Toast(toast).show();
+      setTimeout(() => toast.remove(), 5000);
+    }
+
+    function updateLayerTreeview() {
+      const treeview = document.getElementById('layer-treeview');
+      treeview.innerHTML = `<h4>Layers</h4>${allFeatures.length === 0 ? '<p>No layers loaded</p>' : ''}`;
+      const gpxFiles = allFeatures.filter(f => f.fileType === 'gpx');
+      const kmlFiles = allFeatures.filter(f => f.fileType === 'kml/kmz');
+      if (gpxFiles.length) {
+        const div = document.createElement('div');
+        div.className = 'layer-folder';
+        div.innerHTML = `
+          <div class="layer-folder-header" data-bs-toggle="collapse" data-bs-target="#gpx-folder" aria-expanded="true">
+            <span>GPX Data (${gpxFiles.length})</span><i class="bi bi-chevron-down"></i>
+          </div>
+          <div id="gpx-folder" class="layer-folder-content collapse show">
+            ${gpxFiles.map((fileData, index) => `
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="layer-gpx-${index}" ${fileData.visible ? 'checked' : ''} aria-label="Toggle ${fileData.name}">
+                <label class="form-check-label" for="layer-gpx-${index}">${fileData.name}</label>
+                <span class="delete-layer" data-type="gpx" data-index="${index}"><i class="bi bi-trash"></i></span>
+              </div>
+            `).join('')}
+          </div>`;
+        treeview.appendChild(div);
+        gpxFiles.forEach((fileData, index) => {
+          document.getElementById(`layer-gpx-${index}`).addEventListener('change', (e) => {
+            fileData.visible = e.target.checked;
+            fileData.layer.setVisible(fileData.visible);
+            updateSummary();
+            updateElevationChart();
+            setupTimeSlider();
+            document.getElementById('downloadKml').disabled = !allFeatures.some(f => f.visible);
+            document.getElementById('downloadBatchKml').disabled = allFeatures.length < 2;
+            adjustMapView();
+          });
+        });
+      }
+      if (kmlFiles.length) {
+        const div = document.createElement('div');
+        div.className = 'layer-folder';
+        div.innerHTML = `
+          <div class="layer-folder-header" data-bs-toggle="collapse" data-bs-target="#kml-folder" aria-expanded="true">
+            <span>KML/KMZ Data (${kmlFiles.length})</span><i class="bi bi-chevron-down"></i>
+          </div>
+          <div id="kml-folder" class="layer-folder-content collapse show">
+            ${kmlFiles.map((fileData, index) => `
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="layer-kml-${index}" ${fileData.visible ? 'checked' : ''} aria-label="Toggle ${fileData.name}">
+                <label class="form-check-label" for="layer-kml-${index}">${fileData.name}</label>
+                <span class="delete-layer" data-type="kml" data-index="${index}"><i class="bi bi-trash"></i></span>
+              </div>
+            `).join('')}
+          </div>`;
+        treeview.appendChild(div);
+        kmlFiles.forEach((fileData, index) => {
+          document.getElementById(`layer-kml-${index}`).addEventListener('change', (e) => {
+            fileData.visible = e.target.checked;
+            fileData.layer.setVisible(fileData.visible);
+            updateSummary();
+            updateElevationChart();
+            setupTimeSlider();
+            document.getElementById('downloadKml').disabled = !allFeatures.some(f => f.visible);
+            document.getElementById('downloadBatchKml').disabled = allFeatures.length < 2;
+            adjustMapView();
+          });
+        });
+      }
+      document.querySelectorAll('.delete-layer').forEach(el => {
+        el.addEventListener('click', () => {
+          const type = el.dataset.type, localIdx = parseInt(el.dataset.index);
+          const fileData = type === 'gpx' ? allFeatures.filter(f => f.fileType === 'gpx')[localIdx] : allFeatures.filter(f => f.fileType === 'kml/kmz')[localIdx];
+          const globalIdx = allFeatures.indexOf(fileData);
+          if (globalIdx !== -1) {
+            allFeatures.splice(globalIdx, 1);
+            map.removeLayer(fileData.layer);
+            map.getInteractions().forEach(i => {
+              if (i instanceof ol.interaction.Modify && i.get('source') === fileData.source) map.removeInteraction(i);
+            });
+            updateLayerTreeview();
+            updateSummary();
+            updateElevationChart();
+            setupTimeSlider();
+            document.getElementById('downloadKml').disabled = !allFeatures.some(f => f.visible);
+            document.getElementById('downloadBatchKml').disabled = allFeatures.length < 2;
+            adjustMapView();
+          }
+        });
+      });
+    }
+
+    function adjustMapView() {
+      const extent = ol.extent.createEmpty();
+      allFeatures.filter(f => f.visible).forEach(f => f.source.getFeatures().forEach(feat => ol.extent.extend(extent, feat.getGeometry().getExtent())));
+      waypointSource.getFeatures().forEach(feat => ol.extent.extend(extent, feat.getGeometry().getExtent()));
+      if (!ol.extent.isEmpty(extent)) map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 15 });
+    }
+
+    function resetMap() {
+      allFeatures.forEach(f => {
+        map.removeLayer(f.layer);
+        map.getInteractions().forEach(i => { if (i instanceof ol.interaction.Modify && i.get('source') === f.source) map.removeInteraction(i); });
+      });
+      allFeatures = [];
+      waypointSource.clear();
+      map.removeInteraction(modifyWaypointInteraction);
+      map.removeInteraction(measureTool);
+      map.removeInteraction(areaTool);
+      modifyWaypointInteraction = new ol.interaction.Modify({ source: waypointSource });
+      measureTool = new ol.interaction.Draw({
+        source: vectorSource,
+        type: 'LineString',
+        style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 255, 0.7)', width: 2 }) })
+      });
+      areaTool = new ol.interaction.Draw({
+        source: vectorSource,
+        type: 'Polygon',
+        style: new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 255, 0.7)', width: 2 }),
+          fill: new ol.style.Fill({ color: 'rgba(0, 0, 255, 0.2)' })
+        })
+      });
+      measureTool.setActive(false);
+      areaTool.setActive(false);
+      map.addInteraction(modifyWaypointInteraction);
+      map.addInteraction(measureTool);
+      map.addInteraction(areaTool);
+      updateLayerTreeview();
+      updateSummary();
+      updateElevationChart();
+      document.getElementById('downloadKml').disabled = true;
+      document.getElementById('downloadBatchKml').disabled = true;
+      document.getElementById('inputfile').value = '';
+      document.getElementById('legend').style.display = 'none';
+      document.getElementById('time-slider-container').style.display = 'none';
+      if (animationInterval) {
+        cancelAnimationFrame(animationInterval);
+        animationInterval = null;
+      }
+      currentTrackPoints = [];
+      measureToolActive = areaToolActive = waypointToolActive = editMode = false;
+      ['measure-tool', 'area-tool', 'edit-tool', 'waypoint-tool'].forEach(id => {
+        document.getElementById(id).style.backgroundColor = '';
+        document.getElementById(id).setAttribute('aria-pressed', 'false');
+      });
+      tooltip.className = 'ol-tooltip';
+      map.getView().setCenter(ol.proj.fromLonLat([80.3, 19.8]));
+      map.getView().setZoom(4);
+    }
+
+    function styleFunction(feature) {
+      const geomType = feature.getGeometry().getType();
+      const props = feature.getProperties();
+      if (geomType === 'Point' || geomType === 'MultiPoint') {
+        const styles = {
+          start: { radius: 8, fill: 'green' },
+          end: { radius: 8, fill: 'red' },
+          stop: { radius: 10, fill: 'yellow' },
+          trackpoint: { radius: 6, fill: 'blue' },
+          waypoint: { icon: 'https://cdn-icons-png.flaticon.com/512/252/252025.png', scale: 0.08, anchor: [0.5, 1] }
+        };
+        const style = styles[props.type] || styles.trackpoint;
+        return new ol.style.Style({
+          image: style.icon ? new ol.style.Icon({ src: style.icon, scale: style.scale, anchor: style.anchor }) :
+            new ol.style.Circle({ radius: style.radius, fill: new ol.style.Fill({ color: style.fill }), stroke: new ol.style.Stroke({ color: 'white', width: style.radius === 10 ? 2 : 1.5 }) }),
+          text: props.name ? new ol.style.Text({
+            text: props.name,
+            font: '12px Arial',
+            fill: new ol.style.Fill({ color: '#000' }),
+            stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
+            offsetY: -15
+          }) : null
+        });
+      } else if (geomType === 'LineString') {
+        return new ol.style.Style({ stroke: new ol.style.Stroke({ color: 'red', width: 3 }) });
+      }
+      return null;
+    }
+
+    function parseGPX(xmlStr, fileName) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlStr, 'text/xml');
+      const trkpts = xml.getElementsByTagName('trkpt');
+      const features = [], pointsData = [];
+      let totalDistance = 0, elevations = [], speeds = [], startTime = null, endTime = null;
+
+      for (let i = 0; i < trkpts.length; i++) {
+        const lat = parseFloat(trkpts[i].getAttribute('lat'));
+        const lon = parseFloat(trkpts[i].getAttribute('lon'));
+        const ele = trkpts[i].getElementsByTagName('ele')[0]?.textContent;
+        const time = trkpts[i].getElementsByTagName('time')[0]?.textContent;
+        const istTime = convertToIST(time);
+        pointsData.push({ lat, lon, elevation: ele ? parseFloat(ele) : undefined, time, istTime });
       }
 
-      function pauseAnimation() {
-        if (animationInterval) {
-          clearInterval(animationInterval);
-          animationInterval = null;
+      for (let i = 1; i < pointsData.length; i++) {
+        totalDistance += haversine(pointsData[i - 1].lat, pointsData[i - 1].lon, pointsData[i].lat, pointsData[i].lon);
+        if (pointsData[i].elevation !== undefined) elevations.push(pointsData[i].elevation);
+        if (pointsData[i].time && pointsData[i - 1].time) {
+          const dist = haversine(pointsData[i - 1].lat, pointsData[i - 1].lon, pointsData[i].lat, pointsData[i].lon);
+          const timeDiff = (new Date(pointsData[i].time) - new Date(pointsData[i - 1].time)) / 1000;
+          speeds.push(timeDiff > 0 ? (dist / timeDiff) * 3.6 : 0);
+        } else {
+          speeds.push(0);
+        }
+      }
+      if (pointsData.length > 0 && pointsData[0].elevation !== undefined) elevations.unshift(pointsData[0].elevation);
+      if (pointsData.length > 0) speeds.unshift(0);
+
+      const stopPoints = [];
+      for (let i = 1; i < pointsData.length; i++) {
+        if (pointsData[i].time && pointsData[i - 1].time) {
+          const timeDiff = (new Date(pointsData[i].time) - new Date(pointsData[i - 1].time)) / 1000 / 60;
+          if (timeDiff > 10) {
+            const duration = Math.round(timeDiff);
+            stopPoints.push({
+              lat: pointsData[i - 1].lat,
+              lon: pointsData[i - 1].lon,
+              time: pointsData[i - 1].time,
+              istTime: pointsData[i - 1].istTime,
+              elevation: pointsData[i - 1].elevation,
+              haltDuration: `${duration} minute${duration > 1 ? 's' : ''}`
+            });
+          }
         }
       }
 
-      function updateAnimationPosition(index) {
-        if (!currentTrackPoints || index < 0 || index >= currentTrackPoints.length) return;
-        const point = currentTrackPoints[index];
-        const coord = point.getGeometry().getCoordinates();
-        const speed = point.get('speed') !== undefined ? point.get('speed').toFixed(2) : 'N/A';
-        const isHalt = point.get('type') === 'stop';
-        animationMarker.setGeometry(new ol.geom.Point(coord));
-        map.getView().setCenter(coord);
-        const timeDisplay = document.getElementById('time-display');
-        timeDisplay.textContent = `${point.get('istTime') || 'N/A'} | Speed: ${speed} km/h${isHalt ? ' (Halt)' : ''}`;
-        timeDisplay.classList.toggle('halt-point', isHalt);
+      if (pointsData.length > 0) {
+        startTime = pointsData[0].time;
+        endTime = pointsData[pointsData.length - 1].time;
+        features.push(new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.fromLonLat([pointsData[0].lon, pointsData[0].lat])),
+          type: 'start',
+          lat: pointsData[0].lat,
+          lon: pointsData[0].lon,
+          elevation: pointsData[0].elevation,
+          time: pointsData[0].time,
+          istTime: pointsData[0].istTime,
+          speed: speeds[0]
+        }));
+        if (pointsData.length > 2) {
+          features.push(new ol.Feature({
+            geometry: new ol.geom.MultiPoint(pointsData.slice(1, -1).map(p => ol.proj.fromLonLat([p.lon, p.lat]))),
+            type: 'multi_trackpoints',
+            pointsData: pointsData.slice(1, -1).map((p, i) => ({ ...p, speed: speeds[i + 1] }))
+          }));
+        }
+        features.push(new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.fromLonLat([pointsData[pointsData.length - 1].lon, pointsData[pointsData.length - 1].lat])),
+          type: 'end',
+          lat: pointsData[pointsData.length - 1].lat,
+          lon: pointsData[pointsData.length - 1].lon,
+          elevation: pointsData[pointsData.length - 1].elevation,
+          time: pointsData[pointsData.length - 1].time,
+          istTime: pointsData[pointsData.length - 1].istTime,
+          speed: speeds[speeds.length - 1]
+        }));
+        stopPoints.forEach(sp => {
+          features.push(new ol.Feature({
+            geometry: new ol.geom.Point(ol.proj.fromLonLat([sp.lon, sp.lat])),
+            type: 'stop',
+            lat: sp.lat,
+            lon: sp.lon,
+            elevation: sp.elevation,
+            time: sp.time,
+            istTime: sp.istTime,
+            haltDuration: sp.haltDuration
+          }));
+        });
+        features.push(new ol.Feature({
+          geometry: new ol.geom.LineString(pointsData.map(p => ol.proj.fromLonLat([p.lon, p.lat]))),
+          type: 'track',
+          name: fileName
+        }));
       }
-    });
+      return { features, totalDistance, elevations, startTime, endTime, speeds, name: fileName };
+    }
+
+    function parseKML(xmlStr, fileName) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlStr, 'text/xml');
+      const placemarks = xml.getElementsByTagName('Placemark');
+      const features = [], pointsData = [], elevations = [], speeds = [];
+      let totalDistance = 0, startTime = null, endTime = null;
+
+      for (const placemark of placemarks) {
+        const name = placemark.getElementsByTagName('name')[0]?.textContent || '';
+        const desc = placemark.getElementsByTagName('description')[0]?.textContent || '';
+        const point = placemark.getElementsByTagName('Point')[0];
+        const lineString = placemark.getElementsByTagName('LineString')[0];
+        const timeSpan = placemark.getElementsByTagName('TimeSpan')[0];
+        const begin = timeSpan?.getElementsByTagName('begin')[0]?.textContent;
+        const end = timeSpan?.getElementsByTagName('end')[0]?.textContent;
+        const extendedData = placemark.getElementsByTagName('ExtendedData')[0];
+        let elevation;
+
+        if (extendedData) {
+          const data = extendedData.getElementsByTagName('Data');
+          for (const d of data) {
+            if (d.getAttribute('name') === 'elevation') elevation = parseFloat(d.getElementsByTagName('value')[0]?.textContent);
+          }
+        }
+
+        if (point) {
+          const coords = point.getElementsByTagName('coordinates')[0]?.textContent.trim().split(',').map(Number);
+          if (coords && coords.length >= 2) {
+            const [lon, lat, ele] = coords;
+            features.push(new ol.Feature({
+              geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
+              type: 'waypoint',
+              name,
+              lat,
+              lon,
+              elevation: ele || elevation,
+              description: desc,
+              time: begin,
+              istTime: convertToIST(begin)
+            }));
+            if (ele || elevation) elevations.push(ele || elevation);
+          }
+        } else if (lineString) {
+          const coordsStr = lineString.getElementsByTagName('coordinates')[0]?.textContent.trim();
+          const coords = coordsStr.split(/\s+/).map(c => c.split(',').map(Number));
+          const lineCoords = coords.filter(c => c.length >= 2).map(c => ol.proj.fromLonLat([c[0], c[1]]));
+          for (let i = 1; i < coords.length; i++) {
+            if (coords[i].length >= 2 && coords[i - 1].length >= 2) {
+              totalDistance += haversine(coords[i - 1][1], coords[i - 1][0], coords[i][1], coords[i][0]);
+              if (coords[i][2] !== undefined) elevations.push(coords[i][2]);
+            }
+          }
+          if (coords.length > 0 && coords[0][2] !== undefined) elevations.unshift(coords[0][2]);
+          if (coords.length > 1) {
+            features.push(new ol.Feature({
+              geometry: new ol.geom.Point(lineCoords[0]),
+              type: 'start',
+              lat: coords[0][1],
+              lon: coords[0][0],
+              elevation: coords[0][2],
+              time: begin,
+              istTime: convertToIST(begin),
+              name
+            }));
+            if (coords.length > 2) {
+              features.push(new ol.Feature({
+                geometry: new ol.geom.MultiPoint(lineCoords.slice(1, -1)),
+                type: 'multi_trackpoints',
+                pointsData: coords.slice(1, -1).map((c, i) => ({
+                  lat: c[1],
+                  lon: c[0],
+                  elevation: c[2],
+                  name,
+                  description: desc
+                }))
+              }));
+            }
+            features.push(new ol.Feature({
+              geometry: new ol.geom.Point(lineCoords[lineCoords.length - 1]),
+              type: 'end',
+              lat: coords[coords.length - 1][1],
+              lon: coords[coords.length - 1][0],
+              elevation: coords[coords.length - 1][2],
+              time: end,
+              istTime: convertToIST(end),
+              name
+            }));
+            features.push(new ol.Feature({
+              geometry: new ol.geom.LineString(lineCoords),
+              type: 'track',
+              name,
+              description: desc
+            }));
+            startTime = begin || startTime;
+            endTime = end || endTime;
+          }
+        }
+      }
+      return { features, totalDistance, elevations, startTime, endTime, speeds, name: fileName };
+    }
+
+    function convertToIST(utcStr) {
+      if (!utcStr) return 'N/A';
+      try {
+        const date = new Date(utcStr);
+        return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }).format(date);
+      } catch (e) {
+        return 'N/A';
+      }
+    }
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Earth's radius in meters
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function updateSummary() {
+      const summary = document.getElementById('summary');
+      if (allFeatures.filter(f => f.visible).length === 0 && waypointSource.getFeatures().length === 0) {
+        summary.innerHTML = '<table class="table table-bordered table-sm"><tbody><tr><th colspan="2">Load a .gpx, .kml, or .kmz file to see details.</th></tr></tbody></table>';
+        return;
+      }
+
+      let html = '<table class="table table-bordered table-sm"><tbody>';
+      let totalDistance = 0, totalPoints = 0, totalWaypoints = waypointSource.getFeatures().length;
+      let startTime = null, endTime = null;
+
+      allFeatures.filter(f => f.visible).forEach((fileData) => {
+        totalDistance += fileData.totalDistance || 0;
+        fileData.source.getFeatures().forEach(feat => {
+          if (feat.get('type') === 'multi_trackpoints') {
+            totalPoints += feat.get('pointsData').length;
+          } else if (feat.get('type') === 'trackpoint') {
+            totalPoints++;
+          }
+        });
+        if (fileData.startTime && (!startTime || new Date(fileData.startTime) < new Date(startTime))) {
+          startTime = fileData.startTime;
+        }
+        if (fileData.endTime && (!endTime || new Date(fileData.endTime) > new Date(endTime))) {
+          endTime = fileData.endTime;
+        }
+      });
+
+      html += `<tr><th>Total Files:</th><td>${allFeatures.filter(f => f.visible).length}</td></tr>`;
+      html += `<tr><th>Total Distance:</th><td>${(totalDistance / 1000).toFixed(2)} km</td></tr>`;
+      html += `<tr><th>Total Track Points:</th><td>${totalPoints}</td></tr>`;
+      html += `<tr><th>Total Waypoints:</th><td>${totalWaypoints}</td></tr>`;
+      if (startTime) {
+        html += `<tr><th>Start Time (IST):</th><td>${convertToIST(startTime)}</td></tr>`;
+      }
+      if (endTime) {
+        html += `<tr><th>End Time (IST):</th><td>${convertToIST(endTime)}</td></tr>`;
+      }
+      if (startTime && endTime) {
+        const duration = (new Date(endTime) - new Date(startTime)) / 1000;
+        const hours = Math.floor(duration / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+        const seconds = Math.floor(duration % 60);
+        html += `<tr><th>Duration:</th><td>${hours}h ${minutes}m ${seconds}s</td></tr>`;
+      }
+      html += '</tbody></table>';
+      summary.innerHTML = html;
+    }
+
+    function updateElevationChart() {
+      const ctx = document.getElementById('elevationChart').getContext('2d');
+      const elevations = [];
+      const labels = [];
+      
+      allFeatures.filter(f => f.visible).forEach(fileData => {
+        if (fileData.elevations && fileData.elevations.length > 0) {
+          elevations.push(...fileData.elevations);
+          labels.push(...Array(fileData.elevations.length).fill(''));
+        }
+      });
+
+      if (elevations.length === 0) {
+        if (elevationChart) elevationChart.destroy();
+        document.getElementById('elevationChart').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('elevationChart').style.display = 'block';
+
+      const minElevation = Math.min(...elevations);
+      const maxElevation = Math.max(...elevations);
+      const avgElevation = elevations.reduce((a, b) => a + b, 0) / elevations.length;
+
+      const chartData = {
+        labels: labels,
+        datasets: [{
+          label: 'Elevation (m)',
+          data: elevations,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.1,
+          fill: true
+        }]
+      };
+
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => `Elevation: ${context.parsed.y.toFixed(2)} m`
+            }
+          }
+        },
+        scales: {
+          y: {
+            title: { display: true, text: 'Elevation (m)' },
+            min: Math.max(0, minElevation - 50),
+            max: maxElevation + 50
+          },
+          x: { display: false }
+        }
+      };
+
+      if (elevationChart) {
+        elevationChart.data = chartData;
+        elevationChart.options = chartOptions;
+        elevationChart.update();
+      } else {
+        elevationChart = new Chart(ctx, {
+          type: 'line',
+          data: chartData,
+          options: chartOptions
+        });
+      }
+    }
+
+    function setupTimeSlider() {
+      currentTrackPoints = [];
+      allFeatures.filter(f => f.visible).forEach(fileData => {
+        const features = fileData.source.getFeatures();
+        const startFeat = features.find(f => f.get('type') === 'start');
+        const multiFeat = features.find(f => f.get('type') === 'multi_trackpoints');
+        const endFeat = features.find(f => f.get('type') === 'end');
+
+        if (startFeat && startFeat.get('time')) {
+          currentTrackPoints.push({
+            coords: startFeat.getGeometry().getCoordinates(),
+            time: startFeat.get('time')
+          });
+        }
+        if (multiFeat) {
+          const pointsData = multiFeat.get('pointsData');
+          const coords = multiFeat.getGeometry().getCoordinates();
+          for (let i = 0; i < pointsData.length; i++) {
+            if (pointsData[i].time) {
+              currentTrackPoints.push({
+                coords: coords[i],
+                time: pointsData[i].time
+              });
+            }
+          }
+        }
+        if (endFeat && endFeat.get('time')) {
+          currentTrackPoints.push({
+            coords: endFeat.getGeometry().getCoordinates(),
+            time: endFeat.get('time')
+          });
+        }
+      });
+
+      if (currentTrackPoints.length > 1) {
+        document.getElementById('time-slider-container').style.display = 'block';
+        document.getElementById('time-slider').max = currentTrackPoints.length - 1;
+        document.getElementById('time-slider').value = 0;
+        updateAnimationPosition(0);
+      } else {
+        document.getElementById('time-slider-container').style.display = 'none';
+      }
+    }
+
+    function startAnimation() {
+      if (currentTrackPoints.length < 2) return;
+      pauseAnimation();
+      let currentIndex = parseInt(document.getElementById('time-slider').value);
+      const startTime = new Date(currentTrackPoints[currentIndex].time).getTime();
+      const endTime = new Date(currentTrackPoints[currentTrackPoints.length - 1].time).getTime();
+      const totalDuration = endTime - startTime;
+
+      let lastTimestamp = null;
+      const animate = (timestamp) => {
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const elapsed = timestamp - lastTimestamp;
+        const progress = Math.min(1, elapsed / totalDuration * 1000);
+        const currentTime = startTime + progress * totalDuration;
+        
+        let newIndex = 0;
+        for (let i = currentIndex; i < currentTrackPoints.length; i++) {
+          if (new Date(currentTrackPoints[i].time).getTime() > currentTime) break;
+          newIndex = i;
+        }
+        
+        if (newIndex !== currentIndex) {
+          currentIndex = newIndex;
+          document.getElementById('time-slider').value = currentIndex;
+          updateAnimationPosition(currentIndex);
+        }
+        
+        if (progress < 1) {
+          animationInterval = requestAnimationFrame(animate);
+        }
+      };
+      animationInterval = requestAnimationFrame(animate);
+    }
+
+    function pauseAnimation() {
+      if (animationInterval) {
+        cancelAnimationFrame(animationInterval);
+        animationInterval = null;
+      }
+    }
+
+    function updateAnimationPosition(index) {
+      if (!currentTrackPoints.length || index < 0 || index >= currentTrackPoints.length) return;
+      const point = currentTrackPoints[index];
+      animationMarker.getGeometry().setCoordinates(point.coords);
+      document.getElementById('time-display').textContent = convertToIST(point.time);
+    }
+
+    function generateKML({ features, name }) {
+      const doc = document.implementation.createDocument('', '', null);
+      const kml = doc.createElementNS('http://www.opengis.net/kml/2.2', 'kml');
+      doc.appendChild(kml);
+      const documentNode = doc.createElement('Document');
+      kml.appendChild(documentNode);
+      
+      const nameNode = doc.createElement('name');
+      nameNode.textContent = name;
+      documentNode.appendChild(nameNode);
+      
+      features.forEach(feature => {
+        const placemark = doc.createElement('Placemark');
+        documentNode.appendChild(placemark);
+        
+        const props = feature.getProperties();
+        if (props.name) {
+          const nameNode = doc.createElement('name');
+          nameNode.textContent = props.name;
+          placemark.appendChild(nameNode);
+        }
+        
+        if (props.description) {
+          const descNode = doc.createElement('description');
+          descNode.textContent = props.description;
+          placemark.appendChild(descNode);
+        }
+        
+        const geom = feature.getGeometry();
+        if (geom.getType() === 'Point') {
+          const point = doc.createElement('Point');
+          placemark.appendChild(point);
+          const coords = doc.createElement('coordinates');
+          const [lon, lat] = ol.proj.toLonLat(geom.getCoordinates());
+          coords.textContent = `${lon},${lat}${props.elevation ? ',' + props.elevation : ''}`;
+          point.appendChild(coords);
+        } else if (geom.getType() === 'MultiPoint') {
+          const multiGeometry = doc.createElement('MultiGeometry');
+          placemark.appendChild(multiGeometry);
+          const points = geom.getCoordinates();
+          points.forEach(pt => {
+            const point = doc.createElement('Point');
+            multiGeometry.appendChild(point);
+            const coords = doc.createElement('coordinates');
+            const [lon, lat] = ol.proj.toLonLat(pt);
+            coords.textContent = `${lon},${lat}`;
+            point.appendChild(coords);
+          });
+        } else if (geom.getType() === 'LineString') {
+          const lineString = doc.createElement('LineString');
+          placemark.appendChild(lineString);
+          const coords = doc.createElement('coordinates');
+          const coordinates = geom.getCoordinates().map(c => {
+            const [lon, lat] = ol.proj.toLonLat(c);
+            return `${lon},${lat}`;
+          }).join(' ');
+          coords.textContent = coordinates;
+          lineString.appendChild(coords);
+        }
+      });
+      
+      const serializer = new XMLSerializer();
+      return serializer.serializeToString(doc);
+    }
+
+    function downloadKML(kml, filename) {
+      const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   </script>
 </body>
 </html>
